@@ -4,6 +4,10 @@ A complete frontend prototype for the **Real-Time Campus Lost & Found System**, 
 
 Built with HTML5, CSS3, and vanilla JavaScript. No frameworks, build step, external libraries, remote fonts, backend, database, or live network communication. All illustrations are original local SVG assets.
 
+## Color theme
+
+The interface uses forest green (`#203d32`), a green primary accent (`#2d6a4f`), warm ivory backgrounds, and sage surfaces. Shared color tokens live at the top of `css/style.css`. Orange lost badges and green found badges remain distinct; item illustrations retain the colors described in their reports.
+
 ## Run
 
 1. Open this folder in VS Code.

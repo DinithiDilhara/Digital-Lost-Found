@@ -395,7 +395,7 @@
     width:100%;
     background:white;
     border-bottom:1px solid var(--line);
-    box-shadow:0 12px 20px #2036530c;
+    box-shadow:0 12px 20px #284b370c;
     flex-direction:column;
     align-items:stretch;
     gap:0;
@@ -562,13 +562,13 @@
   }
   .sidebar-open .sidebar {
     transform:translateX(0);
-    box-shadow:15px 0 40px #12243c25;
+    box-shadow:15px 0 40px #1b332525;
   }
   .sidebar-scrim {
     position:fixed;
     inset:0;
     z-index:45;
-    background:#10203960;
+    background:#172e2560;
     backdrop-filter:blur(2px);
   }
   .sidebar .brand {
@@ -1668,15 +1668,15 @@
 }
 
 .brand small,.hero-social small,.floating-item>small,.reunion-note small,.hero-bottom>span,.landing-tabs>span,.stats-row span,.statistics>p,.footer-main nav,.footer-bottom,.prototype-caption,.auth-copyright,.workspace-label,.community-note p,.app-footer,.page-heading .eyebrow,.date-chip,.stat-card small,.dashboard-banner p,.activity-entry p,.activity-entry small,.help-card p,.results-heading,.detail-reference,.image-caption,dt,.reporter small,.report-choice small,.report-tips p,.match-item>.eyebrow,.match-item small,.match-actions>.text-button,.open-label,.notification-copy time,.notification-actions .text-button,.read-label,.profile-pill,.profile-stats span,.profile-thanks,.upload-zone>span:not(.upload-icon),.report-tabs>button,.item-category,.item-meta,.optional,.global-search input::placeholder,.field input::placeholder,.field textarea::placeholder {
-  color:#61718a;
+  color:#586b5e;
 }
 
 .auth-story-footer {
-  color:#b6c7dc;
+  color:#bbd7c7;
 }
 
 .report-tabs>button.active {
-  color:var(--blue);
+  color:var(--primary);
 }
 
 @media(max-width:560px) {
