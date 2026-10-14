@@ -2,13 +2,35 @@
 
 A complete frontend prototype for the **Real-Time Campus Lost & Found System**, an EC5205 Operating Systems & Network Programming project.
 
-Built with HTML5, CSS3, and vanilla JavaScript. No frameworks, build step, external libraries, remote fonts, backend, database, or live network communication. All illustrations are original local SVG assets.
+The active frontend uses **React, Vite, and JavaScript (JSX)** in `frontend/`. It reuses the original CSS and local SVG illustrations. The original HTML and vanilla JavaScript remain available for comparison. This repository contains a browser-only prototype: no backend, database, or live network communication is included.
 
 ## Color theme
 
 The interface uses forest green (`#203d32`), a green primary accent (`#2d6a4f`), warm ivory backgrounds, and sage surfaces. Shared color tokens live at the top of `css/style.css`. Orange lost badges and green found badges remain distinct; item illustrations retain the colors described in their reports.
 
 ## Run
+
+Use Node.js 20.19+ or 22.12+. From this project folder:
+
+```sh
+npm install
+npm run dev
+```
+
+Open the local URL printed by Vite, normally `http://127.0.0.1:5173/`. Keep the terminal running; Ctrl+C stops it. The root `package.json` runs the React application in `frontend/`.
+
+For a production build and local preview:
+
+```sh
+npm run build
+npm run preview
+```
+
+Deploy `frontend/dist/` and configure the host to serve its `index.html` for application routes (including `/dashboard.html` and other legacy `.html` URLs). Do not deploy the root legacy HTML files over the React build. See [MIGRATION.md](MIGRATION.md) for the file map and verification details.
+
+### Original frontend preview
+
+These steps run the preserved vanilla version, not React:
 
 1. Open this folder in VS Code.
 2. Right-click `index.html` and select **Open with Live Server**.
@@ -37,6 +59,26 @@ Open `http://127.0.0.1:5500/index.html`. This only serves static files; it is no
 - The landing statistics are illustrative. Dashboard totals are calculated from the 16 sample records and your added reports.
 
 ## Project structure
+
+The React implementation adds:
+
+```text
+package.json / package-lock.json  Dependencies and commands
+frontend/index.html              React entry document
+frontend/vite.config.mjs          Vite configuration
+frontend/scripts/sync-assets.mjs  Copy original assets before dev/build
+frontend/src/main.jsx             Mount React and import original CSS
+frontend/src/App.jsx              Routes, auth guards, page metadata
+frontend/src/components/          Shared layouts, controls, cards, dialogs
+frontend/src/context/             Session, profile, unread count, toasts
+frontend/src/pages/               All existing pages as React components
+frontend/src/services/            Original data/API/socket logic as modules
+frontend/src/hooks.js             Loading and responsive hooks
+frontend/src/utils.js             Existing formatting and validation helpers
+frontend/tests/parity.mjs         Migration regression checks
+```
+
+Preserved original files:
 
 ```text
 index.html                 Landing page
@@ -84,7 +126,7 @@ To reset the demo, remove only keys starting with `dlf-v1-` (and `dlf-flash`) fr
 
 ## Connecting the backend later
 
-**Start in `js/api.js`.** Each data function is async and returns ordinary objects or arrays, so you can replace its internals with `fetch()` without rewriting the page components. `API_BASE_URL` is reserved but currently unused. Suggested endpoint mapping:
+**Start in `frontend/src/services/api.js` for React (`js/api.js` for the original version).** Each data function is async and returns ordinary objects or arrays. The migration preserves its implementation, inputs, outputs, storage keys, and reserved `http://localhost:5000/api` base URL. No backend integration was added or changed. Suggested future endpoint mapping:
 
 | Frontend function | Future endpoint |
 | --- | --- |
@@ -103,15 +145,14 @@ Replace the synchronous mock-session guard with server session verification when
 
 ## Connecting WebSocket updates later
 
-Use **`js/socket.js`**. It contains `connectWebSocket()`, `disconnectWebSocket()`, `handleNotification()`, and `handlePossibleMatch()` placeholders. No `WebSocket` object is constructed and no connection is attempted. When the backend is ready, authenticate the connection after login, add reconnect/cleanup behavior, and route incoming events through the existing custom `dlf:notification` and `dlf:match` events. Page listeners can then reload data through `api.js` and refresh unread badges. Disconnect on logout. Preset matches are demo data; there is no AI matching algorithm.
+Use **`frontend/src/services/socket.js`** for React (`js/socket.js` for the original version). It contains `connectWebSocket()`, `disconnectWebSocket()`, `handleNotification()`, and `handlePossibleMatch()` placeholders. No `WebSocket` object is constructed and no connection is attempted. When the backend is ready, authenticate the connection after login, add reconnect/cleanup behavior, and route incoming events through the existing custom `dlf:notification` and `dlf:match` events. Page listeners can then reload data through `api.js` and refresh unread badges. Disconnect on logout. Preset matches are demo data; there is no AI matching algorithm.
 
 ## Verification
 
-With Node.js installed:
+Run all original tests and migration parity checks:
 
 ```sh
-node tests/api.test.cjs
-node tests/audit.cjs
+npm test
 ```
 
 The browser smoke-test flow is Home → Register → Login → Dashboard → Lost Items → Details → Found Items → Report Item → My Reports → Possible Matches → Notifications → Profile → Logout. Also test an invalid form, an empty search, an uploaded image, claim evidence, read-state persistence, editing/deleting/resolving a report, public claim/contact redirects, and the collapsible mobile navigation.

@@ -1,5 +1,11 @@
 # Verification record
 
+## React migration — October 14, 2026
+
+See [MIGRATION.md](MIGRATION.md) for the React verification record and remaining browser/build checks. Run `npm test` for both original and migration regression tests, and `npm run build` for the React production bundle. The record below applies to the preserved original frontend, not the React migration.
+
+## Original frontend
+
 Verified against a local static HTTP preview on October 1, 2026.
 
 - **6/6 automated mock API tests passed** with `node tests/api.test.cjs`.
