@@ -25,3 +25,12 @@ replay_pid*
 
 # Maven generated files
 backend/target/
+
+# Node.js dependencies
+node_modules/
+frontend/node_modules/
+
+# Vite generated files
+frontend/dist/
+frontend/public/
+dist/
