@@ -1,6 +1,7 @@
 
 package com.digitallostfound.server;
 
+import com.digitallostfound.model.FoundItem;
 import com.digitallostfound.model.LostItem;
 import com.digitallostfound.repository.LostItemRepository;
 import com.google.gson.Gson;
@@ -96,23 +97,48 @@ server.createContext("/api/found-items", exchange -> {
         return;
     }
 
-    if (!exchange.getRequestMethod().equals("GET")) {
-        exchange.getResponseHeaders().set("Allow", "GET");
-        sendJson(exchange, 405,
-                Map.of("error", "Method not allowed"));
+    if (exchange.getRequestMethod().equals("GET")) {
+        try {
+            FoundItemRepository repository = new FoundItemRepository();
+            sendJson(exchange, 200, repository.getAllFoundItems());
+
+        } catch (Exception e) {
+            System.err.println("Found items database error: " + e.getMessage());
+
+            sendJson(exchange, 500,
+                    Map.of("error", "Unable to retrieve found items"));
+        }
         return;
     }
 
-    try {
-        FoundItemRepository repository = new FoundItemRepository();
-        sendJson(exchange, 200, repository.getAllFoundItems());
+    if (exchange.getRequestMethod().equals("POST")) {
+        try (InputStreamReader reader = new InputStreamReader(
+                exchange.getRequestBody(), StandardCharsets.UTF_8)) {
+            FoundItem item = gson.fromJson(reader, FoundItem.class);
+            if (!isValidFoundItem(item)) {
+                sendJson(exchange, 400,
+                        Map.of("error", "Invalid found item data"));
+                return;
+            }
 
-    } catch (Exception e) {
-        System.err.println("Found items database error: " + e.getMessage());
-
-        sendJson(exchange, 500,
-                Map.of("error", "Unable to retrieve found items"));
+            FoundItemRepository repository = new FoundItemRepository();
+            repository.addFoundItem(item);
+            sendJson(exchange, 201, item);
+        } catch (JsonParseException | DateTimeParseException e) {
+            sendJson(exchange, 400,
+                    Map.of("error", "Invalid found item data"));
+        } catch (Exception e) {
+            System.err.println("Found items database error: " + e.getMessage());
+            e.printStackTrace();
+            sendJson(exchange, 500,
+                    Map.of("error", "Unable to create found item"));
+        }
+        return;
     }
+
+    exchange.getResponseHeaders().set("Allow", "GET, POST");
+    sendJson(exchange, 405,
+            Map.of("error", "Method not allowed"));
 });
 
         server.setExecutor(Executors.newFixedThreadPool(4));
@@ -132,6 +158,18 @@ server.createContext("/api/found-items", exchange -> {
                 && item.getDateLost() != null
                 && !item.getDateLost().isBlank()
                 && isValidDate(item.getDateLost())
+                && item.getStatus() != null
+                && !item.getStatus().isBlank();
+    }
+
+    private static boolean isValidFoundItem(FoundItem item) {
+        return item != null
+                && item.getUserId() > 0
+                && item.getTitle() != null
+                && !item.getTitle().isBlank()
+                && item.getDateFound() != null
+                && !item.getDateFound().isBlank()
+                && isValidDate(item.getDateFound())
                 && item.getStatus() != null
                 && !item.getStatus().isBlank();
     }
