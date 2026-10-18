@@ -43,8 +43,63 @@ public class Server {
 
         server.createContext("/api/lost-items", exchange -> {
 
-            if (!exchange.getRequestURI().getPath().equals("/api/lost-items")) {
+            String path = exchange.getRequestURI().getPath();
+            String lostItemsPath = "/api/lost-items";
+
+            if (!path.equals(lostItemsPath)
+                    && !path.startsWith(lostItemsPath + "/")) {
                 sendJson(exchange, 404, Map.of("error", "Not found"));
+                return;
+            }
+
+            if (path.startsWith(lostItemsPath + "/")) {
+                if (!exchange.getRequestMethod().equals("PUT")) {
+                    exchange.getResponseHeaders().set("Allow", "PUT");
+                    sendJson(exchange, 405,
+                            Map.of("error", "Method not allowed"));
+                    return;
+                }
+
+                String idText = path.substring((lostItemsPath + "/").length());
+                int itemId;
+                try {
+                    itemId = Integer.parseInt(idText);
+                    if (itemId <= 0) {
+                        throw new NumberFormatException();
+                    }
+                } catch (NumberFormatException e) {
+                    sendJson(exchange, 400,
+                            Map.of("error", "Invalid lost item ID"));
+                    return;
+                }
+
+                try (InputStreamReader reader = new InputStreamReader(
+                        exchange.getRequestBody(), StandardCharsets.UTF_8)) {
+                    LostItem item = gson.fromJson(reader, LostItem.class);
+                    if (!isValidLostItem(item)) {
+                        sendJson(exchange, 400,
+                                Map.of("error", "Invalid lost item data"));
+                        return;
+                    }
+
+                    item.setItemId(itemId);
+                    LostItemRepository repository = new LostItemRepository();
+                    if (!repository.updateLostItem(item)) {
+                        sendJson(exchange, 404,
+                                Map.of("error", "Lost item not found"));
+                        return;
+                    }
+
+                    sendJson(exchange, 200, item);
+                } catch (JsonParseException | DateTimeParseException e) {
+                    sendJson(exchange, 400,
+                            Map.of("error", "Invalid lost item data"));
+                } catch (Exception e) {
+                    System.err.println("Database error: " + e.getMessage());
+                    e.printStackTrace();
+                    sendJson(exchange, 500,
+                            Map.of("error", "Unable to update lost item"));
+                }
                 return;
             }
 
