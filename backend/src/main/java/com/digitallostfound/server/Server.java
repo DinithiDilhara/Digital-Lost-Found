@@ -53,8 +53,41 @@ public class Server {
             }
 
             if (path.startsWith(lostItemsPath + "/")) {
+                if (exchange.getRequestMethod().equals("DELETE")) {
+                    String idText = path.substring((lostItemsPath + "/").length());
+                    int itemId;
+                    try {
+                        itemId = Integer.parseInt(idText);
+                        if (itemId <= 0) {
+                            throw new NumberFormatException();
+                        }
+                    } catch (NumberFormatException e) {
+                        sendJson(exchange, 400,
+                                Map.of("error", "Invalid lost item ID"));
+                        return;
+                    }
+
+                    try {
+                        LostItemRepository repository = new LostItemRepository();
+                        if (!repository.deleteLostItem(itemId)) {
+                            sendJson(exchange, 404,
+                                    Map.of("error", "Lost item not found"));
+                            return;
+                        }
+
+                        exchange.sendResponseHeaders(204, -1);
+                        exchange.close();
+                    } catch (Exception e) {
+                        System.err.println("Database error: " + e.getMessage());
+                        e.printStackTrace();
+                        sendJson(exchange, 500,
+                                Map.of("error", "Unable to delete lost item"));
+                    }
+                    return;
+                }
+
                 if (!exchange.getRequestMethod().equals("PUT")) {
-                    exchange.getResponseHeaders().set("Allow", "PUT");
+                    exchange.getResponseHeaders().set("Allow", "PUT, DELETE");
                     sendJson(exchange, 405,
                             Map.of("error", "Method not allowed"));
                     return;
