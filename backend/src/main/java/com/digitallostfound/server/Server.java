@@ -147,8 +147,63 @@ public class Server {
 
 server.createContext("/api/found-items", exchange -> {
 
-    if (!exchange.getRequestURI().getPath().equals("/api/found-items")) {
+    String path = exchange.getRequestURI().getPath();
+    String foundItemsPath = "/api/found-items";
+
+    if (!path.equals(foundItemsPath)
+            && !path.startsWith(foundItemsPath + "/")) {
         sendJson(exchange, 404, Map.of("error", "Not found"));
+        return;
+    }
+
+    if (path.startsWith(foundItemsPath + "/")) {
+        if (!exchange.getRequestMethod().equals("PUT")) {
+            exchange.getResponseHeaders().set("Allow", "PUT");
+            sendJson(exchange, 405,
+                    Map.of("error", "Method not allowed"));
+            return;
+        }
+
+        String idText = path.substring((foundItemsPath + "/").length());
+        int itemId;
+        try {
+            itemId = Integer.parseInt(idText);
+            if (itemId <= 0) {
+                throw new NumberFormatException();
+            }
+        } catch (NumberFormatException e) {
+            sendJson(exchange, 400,
+                    Map.of("error", "Invalid found item ID"));
+            return;
+        }
+
+        try (InputStreamReader reader = new InputStreamReader(
+                exchange.getRequestBody(), StandardCharsets.UTF_8)) {
+            FoundItem item = gson.fromJson(reader, FoundItem.class);
+            if (!isValidFoundItem(item)) {
+                sendJson(exchange, 400,
+                        Map.of("error", "Invalid found item data"));
+                return;
+            }
+
+            item.setItemId(itemId);
+            FoundItemRepository repository = new FoundItemRepository();
+            if (!repository.updateFoundItem(item)) {
+                sendJson(exchange, 404,
+                        Map.of("error", "Found item not found"));
+                return;
+            }
+
+            sendJson(exchange, 200, item);
+        } catch (JsonParseException | DateTimeParseException e) {
+            sendJson(exchange, 400,
+                    Map.of("error", "Invalid found item data"));
+        } catch (Exception e) {
+            System.err.println("Found items database error: " + e.getMessage());
+            e.printStackTrace();
+            sendJson(exchange, 500,
+                    Map.of("error", "Unable to update found item"));
+        }
         return;
     }
 
@@ -191,7 +246,7 @@ server.createContext("/api/found-items", exchange -> {
         return;
     }
 
-    exchange.getResponseHeaders().set("Allow", "GET, POST");
+    exchange.getResponseHeaders().set("Allow", "GET, POST, PUT");
     sendJson(exchange, 405,
             Map.of("error", "Method not allowed"));
 });
