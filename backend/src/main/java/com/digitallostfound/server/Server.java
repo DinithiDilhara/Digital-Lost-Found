@@ -190,8 +190,41 @@ server.createContext("/api/found-items", exchange -> {
     }
 
     if (path.startsWith(foundItemsPath + "/")) {
+        if (exchange.getRequestMethod().equals("DELETE")) {
+            String idText = path.substring((foundItemsPath + "/").length());
+            int itemId;
+            try {
+                itemId = Integer.parseInt(idText);
+                if (itemId <= 0) {
+                    throw new NumberFormatException();
+                }
+            } catch (NumberFormatException e) {
+                sendJson(exchange, 400,
+                        Map.of("error", "Invalid found item ID"));
+                return;
+            }
+
+            try {
+                FoundItemRepository repository = new FoundItemRepository();
+                if (!repository.deleteFoundItem(itemId)) {
+                    sendJson(exchange, 404,
+                            Map.of("error", "Found item not found"));
+                    return;
+                }
+
+                exchange.sendResponseHeaders(204, -1);
+                exchange.close();
+            } catch (Exception e) {
+                System.err.println("Found items database error: " + e.getMessage());
+                e.printStackTrace();
+                sendJson(exchange, 500,
+                        Map.of("error", "Unable to delete found item"));
+            }
+            return;
+        }
+
         if (!exchange.getRequestMethod().equals("PUT")) {
-            exchange.getResponseHeaders().set("Allow", "PUT");
+            exchange.getResponseHeaders().set("Allow", "PUT, DELETE");
             sendJson(exchange, 405,
                     Map.of("error", "Method not allowed"));
             return;
@@ -279,7 +312,7 @@ server.createContext("/api/found-items", exchange -> {
         return;
     }
 
-    exchange.getResponseHeaders().set("Allow", "GET, POST, PUT");
+    exchange.getResponseHeaders().set("Allow", "GET, POST, PUT, DELETE");
     sendJson(exchange, 405,
             Map.of("error", "Method not allowed"));
 });
