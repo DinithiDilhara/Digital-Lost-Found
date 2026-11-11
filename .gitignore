@@ -29,6 +29,9 @@ backend/target/
 # Node.js dependencies
 node_modules/
 frontend/node_modules/
+.env
+.env.*
+!.env.example
 
 # Vite generated files
 frontend/dist/
