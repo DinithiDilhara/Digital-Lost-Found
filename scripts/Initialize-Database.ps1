@@ -27,12 +27,9 @@ try {
     Get-Content (Join-Path $projectRoot 'database/migrations/002_private_messaging.sql') -Raw |
         mysql --protocol=TCP "--host=$dbHost" "--port=$dbPort" "--user=$env:DB_USER" "--database=$dbName" --default-character-set=utf8mb4 --batch | Out-Null
     if ($LASTEXITCODE -ne 0) { throw 'Private messaging migration failed. Check schema compatibility and rerun after fixing the cause.' }
-    $claimsMigration = Join-Path $projectRoot 'database/migrations/003_found_claims.sql'
-    if (Test-Path -LiteralPath $claimsMigration) {
-        Get-Content $claimsMigration -Raw |
-            mysql --protocol=TCP "--host=$dbHost" "--port=$dbPort" "--user=$env:DB_USER" "--database=$dbName" --default-character-set=utf8mb4 --batch | Out-Null
-        if ($LASTEXITCODE -ne 0) { throw 'Found-claims migration failed. Check schema compatibility and rerun after fixing the cause.' }
-    }
+    Get-Content (Join-Path $projectRoot 'database/migrations/003_found_claims.sql') -Raw |
+        mysql --protocol=TCP "--host=$dbHost" "--port=$dbPort" "--user=$env:DB_USER" "--database=$dbName" --default-character-set=utf8mb4 --batch | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw 'Found-claims migration failed. Check schema compatibility and rerun after fixing the cause.' }
     Get-Content (Join-Path $projectRoot 'database/migrations/004_notifications.sql') -Raw |
         mysql --protocol=TCP "--host=$dbHost" "--port=$dbPort" "--user=$env:DB_USER" "--database=$dbName" --default-character-set=utf8mb4 --batch | Out-Null
     if ($LASTEXITCODE -ne 0) { throw 'Notifications migration failed. Check schema compatibility and rerun after fixing the cause.' }

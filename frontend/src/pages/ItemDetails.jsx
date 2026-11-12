@@ -5,6 +5,7 @@ import { Field } from "../components/Forms.jsx";
 import Icon from "../components/Icon.jsx";
 import Modal from "../components/Modal.jsx";
 import ContactModal from "../components/ContactModal.jsx";
+import FoundClaimModal from "../components/FoundClaimModal.jsx";
 import { useApp } from "../context/AppContext.jsx";
 import { useLoad } from "../hooks.js";
 import { api } from "../services/api.js";
@@ -18,6 +19,7 @@ export default function ItemDetails() {
   );
   const [modal, setModal] = useState(null);
   const [proof, setProof] = useState("");
+  const [submittedClaim, setSubmittedClaim] = useState(null);
   const { session, toast, refreshUnread } = useApp();
   const navigate = useNavigate();
   if (!result) return <p className="notice" role="status">Loading…</p>;
@@ -109,6 +111,13 @@ export default function ItemDetails() {
           <div className="detail-actions">
             {item.status === "Open" ? (
               <>
+                {item.type === "lost" && session && !own && (
+                  <Button id="found-item-claim" disabled={submittedClaim?.itemId === Number(item.id.split("-")[1]) && submittedClaim?.finderId === Number(session.id)}
+                    onClick={() => setModal("found-claim")}>
+                    <Icon name="check" />
+                    I Found This Item
+                  </Button>
+                )}
                 {item.type === "found" && !own && (
                   <Button id="claim-item" onClick={() => open("claim")}>
                     <Icon name="check" />
@@ -154,6 +163,9 @@ export default function ItemDetails() {
       </div>
       {modal === "contact" && (
         <ContactModal itemId={item.id} onClose={() => setModal(null)} />
+      )}
+      {modal === "found-claim" && session && !own && item.type === "lost" && item.status === "Open" && (
+        <FoundClaimModal key={item.id} item={item} onClose={() => setModal(null)} onSubmitted={setSubmittedClaim} />
       )}
       {modal === "claim" && (
         <Modal

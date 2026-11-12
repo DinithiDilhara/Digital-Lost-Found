@@ -160,6 +160,11 @@ export const api = {
     });
   },
   getConversations: () => request('/conversations'),
+  submitFoundClaim: (itemId, { foundLocation, message }) => {
+    const { type, path } = reportPath(itemId);
+    if (type !== 'lost') throw new Error('Found-item claims can only be submitted for lost reports.');
+    return request(`${path}/claims`, { method: 'POST', body: { foundLocation, message } });
+  },
   getConversationMessages: id => request(conversationPath(id, 'messages')),
   replyToConversation: (id, message, key = crypto.randomUUID()) =>
     request(conversationPath(id, 'messages'), { method: 'POST', body: { message }, key }),

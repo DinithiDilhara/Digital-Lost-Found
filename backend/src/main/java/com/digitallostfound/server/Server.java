@@ -16,6 +16,7 @@ public class Server {
         ItemHandler lost = new ItemHandler(true, auth);
         ItemHandler found = new ItemHandler(false, auth);
         ConversationHandler conversations = new ConversationHandler(auth);
+        ClaimHandler claims = new ClaimHandler(auth);
         NotificationHandler notifications = new NotificationHandler(auth);
         server.createContext("/api/health", Http.safe(exchange -> {
             if (!exchange.getRequestMethod().equals("GET")) Http.method(exchange, "GET");
@@ -32,7 +33,8 @@ public class Server {
                             "SELECT token_hash, user_id, expires_at FROM auth_sessions LIMIT 0",
                             "SELECT conversation_id, lost_item_id, found_item_id FROM conversations LIMIT 0",
                             "SELECT message_id, conversation_id, sender_id, body, read_at FROM messages LIMIT 0",
-                            "SELECT notification_id, recipient_id, claim_id, lost_item_id, is_read FROM notifications LIMIT 0"}) {
+                            "SELECT notification_id, recipient_id, claim_id, lost_item_id, is_read FROM notifications LIMIT 0",
+                            "SELECT claim_id, lost_item_id, finder_id, found_location, message, status, created_at FROM found_claims LIMIT 0"}) {
                             try (var ignored = statement.executeQuery(sql)) { }
                         }
                         Http.json(exchange, 200, Map.of("status", "ok", "database", connection.getCatalog()));
@@ -42,7 +44,11 @@ public class Server {
             }
         }));
         server.createContext("/api/auth/", Http.safe(auth::handle));
-        server.createContext("/api/lost-items", Http.safe(lost::handle));
+        server.createContext("/api/lost-items", Http.safe(exchange -> {
+            if (exchange.getRequestURI().getPath().matches("/api/lost-items/[1-9][0-9]*/claims"))
+                claims.handle(exchange);
+            else lost.handle(exchange);
+        }));
         server.createContext("/api/found-items", Http.safe(found::handle));
         server.createContext("/api/conversations", Http.safe(conversations::handle));
         server.createContext("/api/notifications", Http.safe(notifications::handle));

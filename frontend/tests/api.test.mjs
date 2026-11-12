@@ -77,6 +77,24 @@ test('notifications use the authenticated server endpoints', async () => {
   assert.equal(calls[3].url, '/api/notifications/read');
   assert.equal(calls[3].options.method, 'PATCH');
 });
+test('found claims use the lost-item claim endpoint and reject found reports', async () => {
+  const calls = [];
+  globalThis.fetch = async (url, options = {}) => {
+    calls.push({ url, options });
+    return json({ claimId: 4, itemId: 7, finderId: 2, ownerId: 1, status: 'PENDING' }, 201);
+  };
+  const api = await fresh();
+  const result = await api.submitFoundClaim('lost-7', {
+    foundLocation: 'Library',
+    message: 'Found beside the reference books.',
+  });
+  assert.equal(result.claimId, 4);
+  assert.equal(calls[0].url, '/api/lost-items/7/claims');
+  assert.throws(() => api.submitFoundClaim('found-7', {
+    foundLocation: 'Library',
+    message: 'Found beside the reference books.',
+  }), /only be submitted for lost reports/);
+});
 test('message API uses item type and server-side session without sender or recipient IDs', async () => {
   const calls = [];
   globalThis.fetch = async (url, options = {}) => {

@@ -120,6 +120,50 @@ try {
   assert.equal(sql(`SELECT status FROM lost_items WHERE item_id=${lost.itemId}`), 'RESOLVED');
   await a.call(`/lost-items/${lost.itemId}`, { method: 'PATCH', body: { status: 'Open' } });
   passed('owner edits and status changes persist without transferring ownership');
+  await a.call(`/lost-items/${lost.itemId}`, { method: 'PATCH', body: { status: 'RESOLVED' } });
+  await b.call(`/lost-items/${lost.itemId}/claims`, {
+    method: 'POST',
+    body: { foundLocation: 'Engineering Library desk', message: 'This claim must be rejected.' },
+  }, 409);
+  assert.equal(sql(`SELECT COUNT(*) FROM notifications WHERE lost_item_id=${lost.itemId}`), '0');
+  await a.call(`/lost-items/${lost.itemId}`, { method: 'PATCH', body: { status: 'Open' } });
+  passed('rejected claims create no notification');
+  const claim = await b.call(`/lost-items/${lost.itemId}/claims`, {
+    method: 'POST',
+    body: {
+      foundLocation: 'Engineering Library desk',
+      message: 'I found the calculator beside the reference books.',
+    },
+  }, 201);
+  assert.equal(claim.ownerId, Number(userA.id));
+  assert.equal(sql(`SELECT recipient_id FROM notifications WHERE claim_id=${claim.claimId}`), userA.id);
+  assert.equal(sql(`SELECT COUNT(*) FROM notifications WHERE claim_id=${claim.claimId}`), '1');
+  const ownerNotifications = await a.call('/notifications');
+  const ownerNotification = ownerNotifications.find(note =>
+    note.claimId === claim.claimId && note.lostItemId === lost.itemId && !note.read);
+  assert.ok(ownerNotification);
+  assert.equal((await a.call('/notifications/unread-count')).count, 1);
+  assert.equal((await b.call('/notifications')).some(note => note.claimId === claim.claimId), false);
+  assert.equal((await b.call(`/notifications/${ownerNotification.id}/read`, {
+    method: 'PATCH', body: {},
+  })).updated, 0);
+  assert.equal((await a.call('/notifications/unread-count')).count, 1);
+  assert.equal((await a.call(`/notifications/${ownerNotification.id}/read`, {
+    method: 'PATCH', body: {},
+  })).updated, 1);
+  assert.equal((await a.call('/notifications/unread-count')).count, 0);
+  await anonymous.call('/auth/login', { method: 'POST', body: accountC });
+  assert.equal((await anonymous.call('/notifications')).some(note => note.claimId === claim.claimId), false);
+  await anonymous.call('/auth/logout', { method: 'POST' }, 204);
+  await b.call(`/lost-items/${lost.itemId}/claims`, {
+    method: 'POST',
+    body: {
+      foundLocation: 'Engineering Library desk',
+      message: 'I found the calculator beside the reference books.',
+    },
+  }, 409);
+  assert.equal(sql(`SELECT COUNT(*) FROM notifications WHERE claim_id=${claim.claimId}`), '1');
+  passed('found claim and owner notification commit atomically; duplicate claim creates no duplicate notification');
   const foundReport = { ...report, title: `Found calculator ${unique}`, dateFound: '2026-10-02' };
   found = await a.call('/found-items', { method: 'POST', body: foundReport, key: crypto.randomUUID() }, 201);
   assert.equal(sql(`SELECT title FROM found_items WHERE item_id=${found.itemId}`), foundReport.title);
@@ -219,6 +263,7 @@ try {
   assert.equal((await refresh.call('/auth/me')).id, userB.id);
   assert.equal((await refresh.call(`/lost-items/${lost.itemId}`)).itemId, lost.itemId);
   assert.equal((await refresh.call(`/found-items/${found.itemId}`)).itemId, found.itemId);
+  assert.ok((await a.call('/notifications')).some(note => note.claimId === claim.claimId));
   const afterRestart = await refresh.call(`/conversations/${conversationId}/messages`);
   assert.equal(afterRestart.length, 2);
   assert.equal(afterRestart[1].body, 'The label has my initials on the back.');
