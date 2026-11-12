@@ -12,9 +12,9 @@ export default function Dashboard() {
       api.getItems(),
       api.getMyReports(),
       api.getNotifications(),
-    ]),
+    ]), [], true,
   );
-  if (!result) return null;
+  if (!result) return <p className="notice" role="status">Loading…</p>;
   const [user, items, reports, notes] = result;
   const hour = new Date().getHours();
   const greeting =

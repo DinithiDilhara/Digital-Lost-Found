@@ -37,3 +37,9 @@ frontend/node_modules/
 frontend/dist/
 frontend/public/
 dist/
+
+# Local development tools and secrets
+.local/
+.env
+.env.local
+backend/.env

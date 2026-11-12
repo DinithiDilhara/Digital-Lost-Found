@@ -13,6 +13,7 @@ const nav = [
   ["report-item", "Report Item", "plus"],
   ["possible-matches", "Possible Matches", "match"],
   ["my-reports", "My Reports", "reports"],
+  ["messages", "Messages", "mail"],
   ["notifications", "Notifications", "bell"],
   ["profile", "Profile", "user"],
 ];
@@ -85,13 +86,13 @@ function AppFooter() {
       <span>© 2026 DigitalLostFound</span>
       <span>
         <span className="status-dot" />
-        Frontend preview · Mock data
+        Campus Lost & Found
       </span>
     </footer>
   );
 }
 function Sidebar({ page, open, mobile, sidebarRef, onLogout }) {
-  const { unread } = useApp();
+  const { unread, messagesUnread } = useApp();
   return (
     <aside
       className="sidebar"
@@ -125,7 +126,11 @@ function Sidebar({ page, open, mobile, sidebarRef, onLogout }) {
           >
             <Icon name={glyph} />
             <span>{label}</span>
-            {path === "notifications" && (
+            {path === "messages" ? (
+              <span className="nav-count" data-message-unread hidden={!messagesUnread}>
+                {messagesUnread}
+              </span>
+            ) : path === "notifications" && (
               <span className="nav-count" data-unread hidden={!unread}>
                 {unread}
               </span>
@@ -284,12 +289,12 @@ export function AppLayout({ page, title, children }) {
   const onLogout = async () => {
     try {
       await logout();
-      navigate("/index.html");
+      navigate("/login.html");
     } catch (error) {
       toast(error.message, "error");
     }
   };
-  if (!user) return null;
+  if (!user) return <p className="notice" role="status">Loading your account…</p>;
   return (
     <>
       <button

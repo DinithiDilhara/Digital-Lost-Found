@@ -10,7 +10,8 @@
     "prebuild": "node frontend/scripts/sync-assets.mjs",
     "build": "vite build --config frontend/vite.config.mjs",
     "preview": "vite preview --config frontend/vite.config.mjs",
-    "test": "node tests/api.test.cjs && node tests/audit.cjs && node frontend/tests/parity.mjs"
+    "test": "node --test frontend/tests/api.test.mjs frontend/tests/parity.mjs",
+    "test:integration": "node tests/integration.mjs"
   },
   "engines": {
     "node": "^20.19.0 || >=22.12.0"

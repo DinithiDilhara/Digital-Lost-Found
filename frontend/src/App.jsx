@@ -1,6 +1,7 @@
-import { Component, useEffect } from "react";
+import { Component, useEffect, useState } from "react";
 import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { useApp } from "./context/AppContext.jsx";
+import { api } from "./services/api.js";
 import { AppLayout, PublicHeader } from "./components/Layout.jsx";
 import { Button, EmptyState } from "./components/Common.jsx";
 import Home from "./pages/Home.jsx";
@@ -12,6 +13,7 @@ import ReportItem from "./pages/ReportItem.jsx";
 import Matches from "./pages/Matches.jsx";
 import MyReports from "./pages/MyReports.jsx";
 import Notifications from "./pages/Notifications.jsx";
+import Messages from "./pages/Messages.jsx";
 import Profile from "./pages/Profile.jsx";
 
 const titles = {
@@ -26,16 +28,19 @@ const titles = {
   "possible-matches": "Possible Matches",
   "my-reports": "My Reports",
   notifications: "Notifications",
+  messages: "Messages",
   profile: "Profile",
   search: "Search",
 };
 
 function Page({ name, children, isPublic = false }) {
-  const { session } = useApp();
+  const { session, authLoading, authError } = useApp();
   useEffect(() => {
     document.title = `${titles[name]} · DigitalLostFound`;
     document.body.dataset.page = name;
   }, [name]);
+  if (!isPublic && authLoading) return <p className="notice" role="status">Checking your session…</p>;
+  if (!isPublic && authError) return <main className="container public-details"><EmptyState title="Cannot connect" message={authError}><Button onClick={() => window.location.reload()}>Retry connection</Button></EmptyState></main>;
   if (!isPublic && !session) return <Navigate to="/login.html" replace />;
   if (name === "item-details" && !session)
     return (
@@ -79,12 +84,27 @@ class PageError extends Component {
           message={this.state.error.message}
         >
           <Button to="/index.html">Back to Home</Button>
+          <Button onClick={() => window.location.reload()}>Retry</Button>
         </EmptyState>
       </main>
     ) : (
       this.props.children
     );
   }
+}
+
+function BackendStatus() {
+  const [connectionError, setConnectionError] = useState(api.getBackendError);
+  useEffect(() => {
+    const updateStatus = (event) => setConnectionError(event.detail.error);
+    window.addEventListener("dlf:backend-status", updateStatus);
+    return () => window.removeEventListener("dlf:backend-status", updateStatus);
+  }, []);
+  return connectionError ? (
+    <div className="notice" role="alert">
+      {connectionError}
+    </div>
+  ) : null;
 }
 
 function ScrollPosition() {
@@ -123,6 +143,7 @@ export default function App() {
       <a className="skip-link" href="#main">
         Skip to main content
       </a>
+      <BackendStatus />
       <ScrollPosition />
       <PageError key={`${location.pathname}${location.search}`}>
         <Routes>
@@ -227,6 +248,14 @@ export default function App() {
             element={
               <Page name="notifications">
                 <Notifications />
+              </Page>
+            }
+          />
+          <Route
+            path="/messages.html"
+            element={
+              <Page name="messages">
+                <Messages />
               </Page>
             }
           />

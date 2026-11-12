@@ -13,7 +13,7 @@ export default function MyReports() {
   const [active, setActive] = useState("all");
   const [modal, setModal] = useState(null);
   const { toast } = useApp();
-  if (!reports) return null;
+  if (!reports) return <p className="notice" role="status">Loading…</p>;
   const items = reports.filter(
     (item) =>
       active === "all" ||
@@ -143,7 +143,7 @@ export default function MyReports() {
         >
           <p>
             {deleting
-              ? "Are you sure you want to delete this report? This will remove it from your reports and campus listings in this browser."
+              ? "Are you sure you want to delete this report? This will remove it from your reports and campus listings for everyone."
               : "Mark this item as returned or resolved? It will remain in your report history and no longer accept claims."}
           </p>
         </Modal>

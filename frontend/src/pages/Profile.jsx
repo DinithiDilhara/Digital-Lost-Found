@@ -18,7 +18,7 @@ export default function Profile() {
   const { user, setUser, toast } = useApp();
   const [reports] = useLoad(() => api.getMyReports());
   const [modal, setModal] = useState(null);
-  if (!reports || !user) return null;
+  if (!reports || !user) return <p className="notice" role="status">Loading…</p>;
   return (
     <>
       <div className="page-heading">
@@ -106,8 +106,7 @@ export default function Profile() {
             </Button>
           </section>
           <p className="prototype-caption">
-            Profile changes are saved in this browser for the frontend
-            prototype.
+            Profile changes are saved to your campus account.
           </p>
         </div>
       </div>
@@ -199,6 +198,7 @@ function EditProfile({ user, onSave, onClose }) {
 }
 function ChangePassword({ onClose }) {
   const [values, setValues] = useState({
+    currentPassword: "",
     newPassword: "",
     confirmPassword: "",
   });
@@ -212,10 +212,11 @@ function ChangePassword({ onClose }) {
   return (
     <Modal
       title="Change password"
-      confirmText="Preview password change"
+      confirmText="Change password"
       onClose={onClose}
       onConfirm={async (form) => {
         const issues = validate(values, {
+          currentPassword: required("Current password"),
           newPassword: (value) =>
             value.length >= 8 ? "" : "Use at least 8 characters.",
           confirmPassword: (value) =>
@@ -228,14 +229,14 @@ function ChangePassword({ onClose }) {
           focusInvalid(form, issues);
           return false;
         }
-        await api.changePassword(values.newPassword);
-        toast("Password change validated. Demo passwords are not stored.");
+        await api.changePassword(values.newPassword, values.currentPassword);
+        toast("Password changed successfully. Other sessions have been signed out.");
       }}
     >
       <p>
-        Preview the password change flow. This demo does not store or enforce
-        passwords.
+        Enter your current password to choose a new one.
       </p>
+      <PasswordField label="Current Password" name="currentPassword" autoComplete="current-password" value={values.currentPassword} onChange={change} error={errors.currentPassword} />
       <PasswordField
         label="New Password"
         name="newPassword"

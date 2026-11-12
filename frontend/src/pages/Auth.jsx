@@ -225,10 +225,10 @@ export default function Auth({ register = false }) {
           <div className="demo-notice">
             <Icon name="info" />
             <p>
-              <strong>Frontend demo</strong>
+              <strong>Campus account</strong>
               {register
-                ? "Account details are saved in this browser. Passwords are never stored."
-                : "Use any valid email and any nonempty password. Authentication is simulated."}
+                ? "Your account is saved securely by the campus server."
+                : "Log in with the email and password you registered."}
             </p>
           </div>
         </div>
@@ -248,8 +248,7 @@ export default function Auth({ register = false }) {
           }}
         >
           <p>
-            This prototype does not send email or store passwords. You can log
-            in with any nonempty password.
+            Password reset emails are not connected yet. Contact your project administrator if you cannot access your account.
           </p>
           <Field
             label="University Email"

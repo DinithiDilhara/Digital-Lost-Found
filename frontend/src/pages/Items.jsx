@@ -6,6 +6,7 @@ import Icon from "../components/Icon.jsx";
 import { api } from "../services/api.js";
 import { data } from "../services/data.js";
 import { useLoad } from "../hooks.js";
+import { filterDateError, today } from "../utils.js";
 
 export default function Items({ type = "" }) {
   const [params] = useSearchParams();
@@ -22,8 +23,9 @@ export default function Items({ type = "" }) {
     query: params.get("q") || "",
   });
   const [resolved, setResolved] = useState(!!params.get("resolved"));
-  const [items] = useLoad(() => api.getItems());
-  if (!items) return null;
+  const [dateError, setDateError] = useState("");
+  const [items] = useLoad(() => api.getItems(), [], true);
+  if (!items) return <p className="notice" role="status">Loading…</p>;
   const title =
     type === "lost"
       ? "Lost Items"
@@ -69,6 +71,7 @@ export default function Items({ type = "" }) {
             event.preventDefault();
             setFilters(emptyFilters);
             setResolved(false);
+            setDateError("");
           }}
         >
           <div className="list-search">
@@ -111,11 +114,23 @@ export default function Items({ type = "" }) {
               ))}
             </Field>
             <Field
-              label={`Date ${type || "reported"}`}
-              name="date"
-              type="date"
-              value={filters.date}
-              onChange={change}
+            label={`Date ${type || "reported"}`}
+            name="date"
+            type="date"
+            max={today()}
+            value={filters.date}
+            onChange={(event) => {
+              const value = event.target.value;
+              const error = filterDateError(value);
+              if (error) {
+                setDateError(error);
+                return;
+              }
+              setDateError("");
+              change(event);
+            }}
+            error={dateError}
+            hint="Today or a past date in Sri Lanka time."
             />
             <Field
               label="Status"

@@ -20,7 +20,7 @@ export default function ItemDetails() {
   const [proof, setProof] = useState("");
   const { session, toast, refreshUnread } = useApp();
   const navigate = useNavigate();
-  if (!result) return null;
+  if (!result) return <p className="notice" role="status">Loading…</p>;
   const { item } = result;
   if (!item)
     return (
@@ -53,7 +53,7 @@ export default function ItemDetails() {
           <span className="image-caption">
             {item.image.startsWith("data:")
               ? "Photo provided by the reporter"
-              : "Illustration · Sample campus report"}
+              : "Item illustration"}
           </span>
         </div>
         <article className="detail-content">
@@ -112,17 +112,19 @@ export default function ItemDetails() {
                 {item.type === "found" && !own && (
                   <Button id="claim-item" onClick={() => open("claim")}>
                     <Icon name="check" />
-                    Claim Item
+                    Preview Demo Claim
                   </Button>
                 )}
-                <Button
-                  variant={item.type === "lost" ? "primary" : "outline"}
-                  id="contact-reporter"
-                  onClick={() => open("contact")}
-                >
-                  <Icon name="mail" />
-                  Contact Reporter
-                </Button>
+                {!own && (
+                  <Button
+                    variant={item.type === "lost" ? "primary" : "outline"}
+                    id="contact-reporter"
+                    onClick={() => open("contact")}
+                  >
+                    <Icon name="mail" />
+                    Contact Reporter
+                  </Button>
+                )}
                 {item.type === "lost" && (
                   <Button variant="outline" to="/possible-matches.html">
                     Possible Match

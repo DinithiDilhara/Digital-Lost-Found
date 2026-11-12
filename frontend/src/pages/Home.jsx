@@ -7,9 +7,9 @@ import { api } from "../services/api.js";
 import { useLoad } from "../hooks.js";
 
 export default function Home() {
-  const [items] = useLoad(() => api.getItems());
+  const [items] = useLoad(() => api.getItems(), [], true);
   const [tab, setTab] = useState("all");
-  if (!items) return null;
+  if (!items) return <p className="notice" role="status">Loading…</p>;
   return (
     <>
       <PublicHeader />
@@ -194,7 +194,7 @@ export default function Home() {
               ))}
               <span>
                 <span className="status-dot" />
-                Sample campus reports
+                Campus reports
               </span>
             </div>
             <div className="items-grid" id="recent-grid">
@@ -247,8 +247,7 @@ export default function Home() {
               ))}
             </div>
             <p className="prototype-caption">
-              Frontend preview: notifications and claims are simulated locally.
-              Live updates will arrive with the backend.
+              Reports, accounts, and private item messages use the campus database. Notifications and claim verification remain previews until their team features are connected.
             </p>
           </div>
         </section>

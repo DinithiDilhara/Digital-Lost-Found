@@ -10,6 +10,7 @@ import { data } from "../services/data.js";
 import {
   focusInvalid,
   required,
+  reportDateError,
   safeImage,
   today,
   validate,
@@ -26,7 +27,7 @@ export default function ReportItem() {
     ["lost", "found"].includes(params.get("type")) ? params.get("type") : "",
   );
   const { session } = useApp();
-  if (!result) return null;
+  if (!result) return <p className="notice" role="status">Loading…</p>;
   const { existing } = result;
   if (id && (!existing || existing.ownerId !== session.id))
     return (
@@ -123,6 +124,7 @@ function ReportForm({ type, existing }) {
   const [imageChanged, setImageChanged] = useState(false);
   const fileRef = useRef(null);
   const imageVersion = useRef(0);
+  const submission = useRef({ payload: "", key: "" });
   const { toast } = useApp();
   const navigate = useNavigate();
   const change = (event) =>
@@ -183,15 +185,11 @@ function ReportForm({ type, existing }) {
   };
   const submit = async (event) => {
     event.preventDefault();
+    if (busy) return;
     const issues = validate(values, {
       name: required("Item name"),
       category: required("Category"),
-      date: (value) =>
-        !value
-          ? "Date is required."
-          : value > today()
-            ? "The date cannot be in the future."
-            : "",
+      date: (value) => reportDateError(value),
       location: required("Location"),
       description: required("Description"),
     });
@@ -216,12 +214,16 @@ function ReportForm({ type, existing }) {
       ].map((key) => [key, values[key].trim()]),
     );
     payload.image = image;
+    const signature = JSON.stringify(payload);
+    if (submission.current.payload !== signature) {
+      submission.current = { payload: signature, key: crypto.randomUUID() };
+    }
     setBusy(true);
     setFormError("");
     try {
       if (existing) await api.updateReport(existing.id, payload);
-      else if (type === "lost") await api.reportLostItem(payload);
-      else await api.reportFoundItem(payload);
+      else if (type === "lost") await api.reportLostItem(payload, submission.current.key);
+      else await api.reportFoundItem(payload, submission.current.key);
       toast(
         existing
           ? "Report updated successfully."
@@ -290,8 +292,15 @@ function ReportForm({ type, existing }) {
               max={today()}
               required
               value={values.date}
-              onChange={change}
+              onChange={(event) => {
+                change(event);
+                setErrors((current) => ({
+                  ...current,
+                  date: reportDateError(event.target.value),
+                }));
+              }}
               error={errors.date}
+              hint="Today or a past date in Sri Lanka time."
             />
             <div className="field">
               <label htmlFor="location">
@@ -343,7 +352,7 @@ function ReportForm({ type, existing }) {
                 name="contact"
                 placeholder="Preferred email or contact details"
                 maxLength="150"
-                hint="Stored in your report locally; not shown in public item details."
+                hint="Saved with your report; visible only to you."
                 value={values.contact}
                 onChange={change}
               />

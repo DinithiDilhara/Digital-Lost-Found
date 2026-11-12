@@ -11,7 +11,7 @@ import java.util.Map;
 public class DatabaseConnection {
 
     private static final String DEFAULT_URL =
-        "jdbc:mysql://localhost:3306/digital_lost_found";
+        "jdbc:mysql://127.0.0.1:3306/digital_lost_found?connectTimeout=5000&socketTimeout=10000";
 
     public static Connection getConnection() throws SQLException {
 
@@ -31,6 +31,7 @@ public class DatabaseConnection {
 
         return DriverManager.getConnection(url, username, password);
     }
+<<<<<<< Updated upstream
 
     private static String setting(String name, Map<String, String> dotenv) {
         String environmentValue = System.getenv(name);
@@ -76,3 +77,6 @@ public class DatabaseConnection {
         }
     }
 }
+=======
+}
+>>>>>>> Stashed changes

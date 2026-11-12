@@ -16,7 +16,10 @@ export const useApp = () => useContext(AppContext);
 export function AppProvider({ children }) {
   const [session, setSession] = useState(() => api.getSession());
   const [user, setUser] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [authError, setAuthError] = useState("");
   const [unread, setUnread] = useState(0);
+  const [messagesUnread, setMessagesUnread] = useState(0);
   const [toasts, setToasts] = useState([]);
   const timers = useRef(new Set());
   const nextId = useRef(0);
@@ -30,6 +33,17 @@ export function AppProvider({ children }) {
     timers.current.add(timer);
   }, []);
   useEffect(() => () => timers.current.forEach(clearTimeout), []);
+  useEffect(() => {
+    let active = true;
+    api.getUser().then((profile) => {
+      if (active) { setUser(profile); setSession(profile); }
+    }).catch((error) => {
+      if (active && error.status !== 401) setAuthError(error.message);
+    }).finally(() => { if (active) setAuthLoading(false); });
+    const expired = () => { setSession(null); setUser(null); setUnread(0); };
+    window.addEventListener("dlf:session-expired", expired);
+    return () => { active = false; window.removeEventListener("dlf:session-expired", expired); };
+  }, []);
   useEffect(() => {
     try {
       const message = sessionStorage.getItem("dlf-flash");
@@ -66,10 +80,41 @@ export function AppProvider({ children }) {
         (await api.getNotifications()).filter((note) => !note.read).length,
       );
   }, []);
+  const refreshMessagesUnread = useCallback(async () => {
+    if (!api.getSession()) {
+      setMessagesUnread(0);
+      return 0;
+    }
+    const count = await api.getUnreadMessageCount();
+    setMessagesUnread(count);
+    return count;
+  }, []);
+  useEffect(() => {
+    if (!session) {
+      setMessagesUnread(0);
+      return undefined;
+    }
+    let active = true;
+    const refresh = async () => {
+      try {
+        const count = await api.getUnreadMessageCount();
+        if (active) setMessagesUnread(count);
+      } catch (error) {
+        if (active) console.error("Could not refresh unread messages:", error);
+      }
+    };
+    refresh();
+    const interval = setInterval(refresh, 30000);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+  }, [session]);
   const login = async (values) => {
     const profile = await api.loginUser(values);
     setUser(profile);
     setSession(api.getSession());
+    setAuthError("");
   };
   const logout = async () => {
     await api.logout();
@@ -81,10 +126,14 @@ export function AppProvider({ children }) {
     <AppContext.Provider
       value={{
         session,
+        authLoading,
+        authError,
         user,
         setUser,
         unread,
         refreshUnread,
+        messagesUnread,
+        refreshMessagesUnread,
         login,
         logout,
         toast,

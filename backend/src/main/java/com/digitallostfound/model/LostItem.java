@@ -10,6 +10,25 @@ public class LostItem {
     private String location;
     private String dateLost;
     private String status;
+    private String color;
+    private String contact;
+    private String image;
+    private String createdAt;
+    private String clientRequestId;
+    private String requestHash;
+
+    public String getColor() { return color; }
+    public void setColor(String value) { color = value; }
+    public String getContact() { return contact; }
+    public void setContact(String value) { contact = value; }
+    public String getImage() { return image; }
+    public void setImage(String value) { image = value; }
+    public String getCreatedAt() { return createdAt; }
+    public void setCreatedAt(String value) { createdAt = value; }
+    public String getClientRequestId() { return clientRequestId; }
+    public void setClientRequestId(String value) { clientRequestId = value; }
+    public String getRequestHash() { return requestHash; }
+    public void setRequestHash(String value) { requestHash = value; }
 
     public LostItem(int itemId, int userId, String title, String description,
                 String category, String location, String dateLost, String status) {

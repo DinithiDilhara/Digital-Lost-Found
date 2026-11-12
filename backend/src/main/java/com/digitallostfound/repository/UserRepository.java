@@ -15,7 +15,7 @@ import java.util.List;
 public class UserRepository {
 
     public void addUser(User user) {
-        String sql = "INSERT INTO users (name, email, password_hash, phone) VALUES (?, ?, ?, ?)";
+        String sql = "INSERT INTO users (name, email, password_hash, phone, registration) VALUES (?, ?, ?, ?, ?)";
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(
@@ -25,6 +25,7 @@ public class UserRepository {
             stmt.setString(2, user.getEmail());
             stmt.setString(3, user.getPassword());
             stmt.setString(4, user.getPhone());
+            stmt.setString(5, user.getRegistration());
 
             int rows = stmt.executeUpdate();
 
@@ -108,7 +109,7 @@ public class UserRepository {
     }
 
     public boolean updateUser(User user) {
-        String sql = "UPDATE users SET name = ?, email = ?, password_hash = ?, phone = ? WHERE user_id = ?";
+        String sql = "UPDATE users SET name = ?, email = ?, password_hash = ?, phone = ?, registration = ? WHERE user_id = ?";
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -117,7 +118,8 @@ public class UserRepository {
             stmt.setString(2, user.getEmail());
             stmt.setString(3, user.getPassword());
             stmt.setString(4, user.getPhone());
-            stmt.setInt(5, user.getUserId());
+            stmt.setString(5, user.getRegistration());
+            stmt.setInt(6, user.getUserId());
 
             return stmt.executeUpdate() > 0;
 
@@ -142,12 +144,14 @@ public class UserRepository {
     }
 
     private User mapUser(ResultSet rs) throws SQLException {
-        return new User(
+        User user = new User(
                 rs.getInt("user_id"),
                 rs.getString("name"),
                 rs.getString("email"),
                 rs.getString("password_hash"),
                 rs.getString("phone")
         );
+        user.setRegistration(rs.getString("registration"));
+        return user;
     }
 }

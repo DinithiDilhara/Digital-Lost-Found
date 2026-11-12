@@ -7,6 +7,9 @@ public class User {
     private String email;
     private String password;
     private String phone;
+    private String registration;
+    public String getRegistration() { return registration; }
+    public void setRegistration(String value) { registration = value; }
 
     public User(int userId, String name, String email, String password, String phone) {
         this.userId = userId;

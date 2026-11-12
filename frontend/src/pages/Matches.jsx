@@ -11,7 +11,7 @@ export default function Matches() {
   const [matches, reload] = useLoad(() => api.getMatches());
   const [contact, setContact] = useState(null);
   const { toast } = useApp();
-  if (!matches) return null;
+  if (!matches) return <p className="notice" role="status">Loading…</p>;
   const dismiss = async (id) => {
     try {
       await api.dismissMatch(id);
@@ -35,8 +35,7 @@ export default function Matches() {
         </span>
       </div>
       <Notice className="matches-notice">
-        These are sample matches for your reports. Compare the details before
-        contacting the reporter.
+        Live matching is not connected yet. Browse the shared found-item reports to compare items.
       </Notice>
       <div className="matches-list">
         {matches.length ? (
@@ -112,7 +111,7 @@ export default function Matches() {
         ) : (
           <EmptyState
             title="No possible matches right now"
-            message="Browse found items or add a report. The demo has preset matches for the sample user."
+            message="Browse found items or add a report while the matching feature is being developed."
           >
             <Button to="/found-items.html">Browse Found Items</Button>
           </EmptyState>

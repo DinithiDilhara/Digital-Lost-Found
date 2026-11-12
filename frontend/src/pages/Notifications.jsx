@@ -10,7 +10,7 @@ export default function Notifications() {
   const [notes, reload] = useLoad(() => api.getNotifications());
   const { toast, refreshUnread } = useApp();
   const navigate = useNavigate();
-  if (!notes) return null;
+  if (!notes) return <p className="notice" role="status">Loading…</p>;
   const unread = notes.filter((note) => !note.read).length;
   const read = async (id, destination) => {
     try {

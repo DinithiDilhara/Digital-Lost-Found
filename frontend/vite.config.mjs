@@ -8,14 +8,16 @@ export default defineConfig({
 
   server: {
     host: "127.0.0.1",
+    port: 5173,
+    strictPort: true,
     proxy: {
       "/api": {
-        target: "http://127.0.0.1:5000",
+        target: process.env.VITE_API_TARGET || "http://127.0.0.1:5000",
         changeOrigin: true,
       },
     },
   },
 
-  preview: { host: "127.0.0.1" },
+  preview: { host: "127.0.0.1", proxy: { "/api": { target: process.env.VITE_API_TARGET || "http://127.0.0.1:5000", changeOrigin: true } } },
   build: { outDir: "dist", emptyOutDir: true },
 });
