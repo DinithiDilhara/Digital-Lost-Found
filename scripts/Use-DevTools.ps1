@@ -3,7 +3,7 @@ $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path $PSScriptRoot -Parent
 if (Test-Path (Join-Path $projectRoot '.env')) {
     foreach ($line in Get-Content (Join-Path $projectRoot '.env')) {
-        if ($line -match '^\s*([A-Z][A-Z0-9_]*)=(.*)$' -and $Matches[1] -in @('DB_URL','DB_USER','DB_PASSWORD','JAVA_HOME','PORT','COOKIE_SECURE','VITE_API_TARGET')) {
+        if ($line -match '^\s*([A-Z][A-Z0-9_]*)=(.*)$' -and $Matches[1] -in @('DB_URL','DB_USER','DB_PASSWORD','JAVA_HOME','PORT','COOKIE_SECURE','VITE_API_TARGET','VITE_HOST')) {
             [Environment]::SetEnvironmentVariable($Matches[1], $Matches[2], 'Process')
         }
     }

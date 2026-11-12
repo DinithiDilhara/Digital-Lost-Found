@@ -31,8 +31,6 @@ public class DatabaseConnection {
 
         return DriverManager.getConnection(url, username, password);
     }
-<<<<<<< Updated upstream
-
     private static String setting(String name, Map<String, String> dotenv) {
         String environmentValue = System.getenv(name);
         return environmentValue == null || environmentValue.isBlank()
@@ -77,6 +75,3 @@ public class DatabaseConnection {
         }
     }
 }
-=======
-}
->>>>>>> Stashed changes

@@ -7,7 +7,7 @@ export default defineConfig({
   plugins: [react()],
 
   server: {
-    host: "127.0.0.1",
+    host: process.env.VITE_HOST || "127.0.0.1",
     port: 5173,
     strictPort: true,
     proxy: {
@@ -18,6 +18,6 @@ export default defineConfig({
     },
   },
 
-  preview: { host: "127.0.0.1", proxy: { "/api": { target: process.env.VITE_API_TARGET || "http://127.0.0.1:5000", changeOrigin: true } } },
+  preview: { host: process.env.VITE_HOST || "127.0.0.1", proxy: { "/api": { target: process.env.VITE_API_TARGET || "http://127.0.0.1:5000", changeOrigin: true } } },
   build: { outDir: "dist", emptyOutDir: true },
 });

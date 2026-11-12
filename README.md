@@ -1,25 +1,32 @@
-<<<<<<< Updated upstream
-# Digital-Lost-Found
-Real-time campus Lost &amp; Found system for EC5205 Operating Systems &amp; Network Programming
+# Digital Lost & Found
+Real-time campus Lost & Found system for EC5205 Operating Systems & Network Programming.
+The project uses React + Vite, a Java 17 HttpServer/JDBC backend, and MySQL.
 
 ## Local database configuration
 
-Copy `.env.example` to `.env` in the repository root and replace the
-placeholders with your local MySQL credentials. The Java backend reads `DB_URL`,
-`DB_USER`, and `DB_PASSWORD` from that file when process environment variables
-are not set. Environment variables take precedence.
+Copy `.env.example` to `.env` in the repository root and replace the placeholders
+with your local MySQL credentials. The Java backend reads `DB_URL`, `DB_USER`, and
+`DB_PASSWORD` from that file when process environment variables are not set.
+Environment variables take precedence.
 
 Never commit `.env` or paste its password into source control.
 
 ## Run locally
 
-Run `npm run dev` from the repository root. The frontend waits for the Java
-backend health endpoint before starting, so requests are not sent to port 5000
-while Maven is still compiling the backend.
-=======
-# Digital Lost & Found
+Run `npm run dev` from the repository root after MySQL is running and the schema
+migrations are applied. This starts the Java backend and Vite frontend together;
+the frontend waits for the backend health endpoint before starting.
 
-React + Vite, Java 17 HttpServer/JDBC, and MySQL. The root `package.json` owns the frontend dependencies and commands. The Java Maven project is `backend/`.
+By default, the frontend listens only on this computer. To let other devices on
+the same trusted network use the app, set `VITE_HOST=0.0.0.0` in the ignored
+root `.env` file and dot-source `scripts/Use-DevTools.ps1` before running
+`npm run dev`. Open `http://<server-computer-LAN-IP>:5173` on the other devices
+and allow inbound TCP port 5173 through the server computer's firewall only on
+the trusted network. The Vite proxy forwards API calls to Java on that host;
+Java then connects to its configured MySQL database. Keep MySQL and Java
+credentials on the server computer; do not expose MySQL port 3306 to student
+devices. Vite's development server is intended for trusted-network testing,
+not public production hosting.
 
 ## Current status and one remaining local setup step
 
@@ -242,4 +249,3 @@ See **docs/INTEGRATION-RESULTS.md** for actual test results, scope limitations, 
 - **Port already in use:** stop only the service you started in its own terminal or select an explicit alternate port. Do not terminate unrelated team processes.
 - **HTTP 409 when deleting:** a related record (for example a teammate's claim foreign key) prevents deletion. The row is preserved; resolve the related workflow rather than bypassing the relationship.
 - **Login lost after switching URLs:** keep using `http://127.0.0.1:5173` so the same cookie is used.
->>>>>>> Stashed changes
