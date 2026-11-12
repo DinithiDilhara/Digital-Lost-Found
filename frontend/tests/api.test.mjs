@@ -59,6 +59,24 @@ test('My Reports combines only the authenticated server response', async () => {
   globalThis.fetch = async url => { assert.equal(url, '/api/me/reports'); return json({ lost: [row], found: [] }); };
   assert.deepEqual((await api.getMyReports()).map(item => item.id), ['lost-7']);
 });
+test('notifications use the authenticated server endpoints', async () => {
+  const calls = [];
+  globalThis.fetch = async (url, options = {}) => {
+    calls.push({ url, options });
+    if (url === '/api/notifications') return json([{ id: 8, type: 'CLAIM_SUBMITTED', read: false }]);
+    if (url === '/api/notifications/unread-count') return json({ count: 1 });
+    return json({ updated: 1 });
+  };
+  const api = await fresh();
+  assert.equal((await api.getNotifications())[0].id, 8);
+  assert.equal(await api.getUnreadNotificationCount(), 1);
+  await api.markNotificationRead(8);
+  await api.markAllNotificationsRead();
+  assert.equal(calls[2].url, '/api/notifications/8/read');
+  assert.equal(calls[2].options.method, 'PATCH');
+  assert.equal(calls[3].url, '/api/notifications/read');
+  assert.equal(calls[3].options.method, 'PATCH');
+});
 test('message API uses item type and server-side session without sender or recipient IDs', async () => {
   const calls = [];
   globalThis.fetch = async (url, options = {}) => {

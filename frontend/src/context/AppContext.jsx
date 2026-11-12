@@ -58,11 +58,11 @@ export function AppProvider({ children }) {
   useEffect(() => {
     let active = true;
     if (session) {
-      Promise.all([api.getUser(), api.getNotifications()])
-        .then(([profile, notes]) => {
+      Promise.all([api.getUser(), api.getUnreadNotificationCount()])
+        .then(([profile, count]) => {
           if (active) {
             setUser(profile);
-            setUnread(notes.filter((note) => !note.read).length);
+            setUnread(count);
           }
         })
         .catch((error) => toast(error.message, "error"));
@@ -76,10 +76,28 @@ export function AppProvider({ children }) {
   }, [session, toast]);
   const refreshUnread = useCallback(async () => {
     if (api.getSession())
-      setUnread(
-        (await api.getNotifications()).filter((note) => !note.read).length,
-      );
+      setUnread(await api.getUnreadNotificationCount());
   }, []);
+  useEffect(() => {
+    if (!session) {
+      setUnread(0);
+      return undefined;
+    }
+    let active = true;
+    const refresh = async () => {
+      try {
+        const count = await api.getUnreadNotificationCount();
+        if (active) setUnread(count);
+      } catch (error) {
+        if (active) console.error("Could not refresh notifications:", error);
+      }
+    };
+    const interval = setInterval(refresh, 30000);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+  }, [session]);
   const refreshMessagesUnread = useCallback(async () => {
     if (!api.getSession()) {
       setMessagesUnread(0);

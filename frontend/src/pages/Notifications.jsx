@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "react-router-dom";
-import { Button, EmptyState, Notice } from "../components/Common.jsx";
+import { Button, EmptyState } from "../components/Common.jsx";
 import Icon from "../components/Icon.jsx";
 import { useApp } from "../context/AppContext.jsx";
 import { useLoad } from "../hooks.js";
@@ -14,7 +14,8 @@ export default function Notifications() {
   const unread = notes.filter((note) => !note.read).length;
   const read = async (id, destination) => {
     try {
-      await api.markNotificationsRead(id);
+      if (id) await api.markNotificationRead(id);
+      else await api.markAllNotificationsRead();
       await refreshUnread();
       if (destination) navigate(destination);
       else reload();
@@ -44,10 +45,6 @@ export default function Notifications() {
           Mark All as Read
         </Button>
       </div>
-      <Notice className="matches-notice">
-        You’re viewing demo notifications. Live campus updates will be connected
-        in a future version.
-      </Notice>
       <section
         className="panel notification-list"
         aria-label="Your notifications"
@@ -58,8 +55,8 @@ export default function Notifications() {
               className={`notification-row ${!note.read ? "unread" : ""}`}
               key={note.id}
             >
-              <span className={`notification-icon ${note.icon}`}>
-                <Icon name={note.icon} />
+              <span className={`notification-icon ${(note.type || "notification").toLowerCase()}`}>
+                <Icon name={note.type === "CLAIM_SUBMITTED" ? "found" : "bell"} />
               </span>
               <div className="notification-copy">
                 <h3>
@@ -77,14 +74,14 @@ export default function Notifications() {
                   })}
                 </time>
                 <div className="notification-actions">
-                  {note.itemId && (
+                  {note.lostItemId && (
                     <Link
-                      to={`/item-details.html?id=${note.itemId}`}
+                      to={`/item-details.html?id=lost-${note.lostItemId}`}
                       className="text-link"
                       data-read-link={note.id}
                       onClick={(event) => {
                         event.preventDefault();
-                        read(note.id, `/item-details.html?id=${note.itemId}`);
+                        read(note.id, `/item-details.html?id=lost-${note.lostItemId}`);
                       }}
                     >
                       View item <Icon name="arrow" />
@@ -108,7 +105,7 @@ export default function Notifications() {
         ) : (
           <EmptyState
             title="You’re all caught up"
-            message="Updates on your reports and demo claims will appear here."
+            message="New updates about your reports will appear here."
           />
         )}
       </section>

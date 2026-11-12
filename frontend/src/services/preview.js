@@ -14,16 +14,7 @@ export function previewApi(getSession, getItem) {
     localStorage.setItem(key(name), JSON.stringify(rows));
     return rows;
   };
-  const getNotifications = async () => read('notifications');
-  const addNotification = async notification => write('notifications', [
-    { ...notification, id: Date.now(), date: new Date().toISOString(), read: false },
-    ...read('notifications'),
-  ]);
   return {
-    getNotifications,
-    addNotification,
-    markNotificationsRead: async id => write('notifications', read('notifications').map(note =>
-      !id || note.id === Number(id) ? { ...note, read: true } : note)),
     getMatches: async () => [],
     dismissMatch: async () => { throw new Error('Live matching is not connected yet.'); },
     claimItem: async (id, proof) => {
@@ -35,7 +26,6 @@ export function previewApi(getSession, getItem) {
       const claims = read('claims');
       if (claims.some(claim => claim.itemId === id)) throw new Error('You already saved a demo claim for this item.');
       write('claims', [...claims, { itemId: id, proof, status: 'Demo only', date: new Date().toISOString() }]);
-      await addNotification({ title: 'Demo claim saved locally', message: `Your demo claim for ${item.name} was not sent to a reporter.`, icon: 'check', itemId: id });
     },
   };
 }

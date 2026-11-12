@@ -146,6 +146,10 @@ export const api = {
     const { type, path } = reportPath(id);
     return request(path, { method: 'PATCH', body: { status: type === 'lost' ? 'RESOLVED' : 'RETURNED' } });
   },
+  getNotifications: () => request('/notifications'),
+  markNotificationRead: id => request(`/notifications/${id}/read`, { method: 'PATCH' }),
+  markAllNotificationsRead: () => request('/notifications/read', { method: 'PATCH' }),
+  getUnreadNotificationCount: async () => (await request('/notifications/unread-count')).count,
   contactReporter: async (itemId, message, key = crypto.randomUUID()) => {
     const { type, path } = reportPath(itemId);
     const reportId = Number(path.slice(path.lastIndexOf('/') + 1));
