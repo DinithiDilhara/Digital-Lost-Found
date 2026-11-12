@@ -6,6 +6,7 @@ import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { once } from 'node:events';
 import { resolve } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
+import { testFoundClaims } from './found-claims.mjs';
 
 const root = resolve(import.meta.dirname, '..');
 const config = process.env.DLF_ENV_FILE || '.env';
@@ -214,6 +215,8 @@ try {
   await a.call('/lost-items', { method: 'POST', body: report, key: crypto.randomUUID(), headers: { 'X-DLF-Request': '' } }, 403);
   passed('invalid dates, required fields, malformed JSON and CSRF requests rejected');
   const refresh = client(); refresh.cookie = b.cookie;
+  const claim = await testFoundClaims({ a, b, userA, userB, report, sql, base, passed, client, accountB });
+  refresh.cookie = b.cookie;
   assert.equal((await refresh.call('/auth/me')).id, userB.id);
   await stop(); await start();
   assert.equal((await refresh.call('/auth/me')).id, userB.id);
@@ -225,6 +228,10 @@ try {
   assert.ok((await a.call('/conversations')).some(row => row.id === conversationId));
   assert.equal(sql(`SELECT COUNT(*) FROM messages WHERE conversation_id=${conversationId}`), '2');
   passed('fresh client and backend restart retain MySQL reports, messages and valid sessions');
+  assert.equal(sql(`SELECT CONCAT(lost_item_id, '|', finder_id, '|', status) FROM found_claims WHERE claim_id=${claim.claimId}`),
+    `${claim.itemId}|${claim.finderId}|PENDING`);
+  await refresh.call(`/lost-items/${claim.itemId}/claims`, { method: 'POST', body: { foundLocation: 'Library', message: 'Retry after restart' } }, 409);
+  passed('PENDING claim remains in MySQL after backend restart and duplicate protection still applies');
   await a.call('/auth/me', { method: 'PUT', body: { ...accountA, name: 'Updated Integration Student A' } });
   await a.call('/auth/password', { method: 'PUT', body: { currentPassword: 'wrong', newPassword: 'Changed-test-9x!' } }, 400);
   await a.call('/auth/password', { method: 'PUT', body: { currentPassword: accountA.password, newPassword: 'Changed-test-9x!' } }, 204);

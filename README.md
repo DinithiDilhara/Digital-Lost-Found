@@ -2,6 +2,9 @@
 Real-time campus Lost & Found system for EC5205 Operating Systems & Network Programming.
 The project uses React + Vite, a Java 17 HttpServer/JDBC backend, and MySQL.
 
+Found-item claim submission setup, API contract and team integration notes:
+[Found-Item Claim Submission](docs/FOUND-CLAIM-SUBMISSION.md).
+
 ## Local database configuration
 
 Copy `.env.example` to `.env` in the repository root and replace the placeholders
@@ -96,7 +99,7 @@ If the database does not exist yet, the next command creates it. Apply the base 
 .\scripts\Initialize-Database.ps1
 ```
 
-This script loads `.env`, connects to the host/port/database in `DB_URL`, creates missing base tables, applies the report/session and private-messaging migrations, and prints database/table/count checks. It stops on SQL errors. It does not drop tables, delete rows, reset passwords, or overwrite existing records. Rerunning it is supported. Your MySQL account needs CREATE/ALTER privileges for this setup step, in addition to runtime SELECT/INSERT/UPDATE/DELETE privileges.
+This script loads `.env`, connects to the host/port/database in `DB_URL`, creates missing base tables, applies the report/session, private-messaging and found-claim migrations, and prints database/table/count checks. It stops on SQL errors. It does not drop tables, delete rows, reset passwords, or overwrite existing records. Rerunning it is supported. Your MySQL account needs CREATE/ALTER privileges for this setup step, in addition to runtime SELECT/INSERT/UPDATE/DELETE privileges.
 
 If the service is stopped, open an administrator PowerShell and run `Start-Service MySQL80`, then return to the normal terminal. It was already running on this laptop.
 

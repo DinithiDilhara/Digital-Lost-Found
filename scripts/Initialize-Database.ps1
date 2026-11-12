@@ -27,6 +27,9 @@ try {
     Get-Content (Join-Path $projectRoot 'database/migrations/002_private_messaging.sql') -Raw |
         mysql --protocol=TCP "--host=$dbHost" "--port=$dbPort" "--user=$env:DB_USER" "--database=$dbName" --default-character-set=utf8mb4 --batch | Out-Null
     if ($LASTEXITCODE -ne 0) { throw 'Private messaging migration failed. Check schema compatibility and rerun after fixing the cause.' }
+    Get-Content (Join-Path $projectRoot 'database/migrations/003_found_claims.sql') -Raw |
+        mysql --protocol=TCP "--host=$dbHost" "--port=$dbPort" "--user=$env:DB_USER" "--database=$dbName" --default-character-set=utf8mb4 --batch | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw 'Found claims migration failed. Check schema compatibility and rerun after fixing the cause.' }
     mysql --protocol=TCP "--host=$dbHost" "--port=$dbPort" "--user=$env:DB_USER" "--database=$dbName" --execute='SELECT DATABASE(), VERSION(); SHOW TABLES; SELECT COUNT(*) AS users FROM users; SELECT COUNT(*) AS lost_reports FROM lost_items; SELECT COUNT(*) AS found_reports FROM found_items;'
     if ($LASTEXITCODE -ne 0) { throw 'Database verification failed.' }
 } finally { $env:MYSQL_PWD = $previousMysqlPassword }

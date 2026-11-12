@@ -16,6 +16,7 @@ public class Server {
         ItemHandler lost = new ItemHandler(true, auth);
         ItemHandler found = new ItemHandler(false, auth);
         ConversationHandler conversations = new ConversationHandler(auth);
+        ClaimHandler claims = new ClaimHandler(auth);
         server.createContext("/api/health", Http.safe(exchange -> {
             if (!exchange.getRequestMethod().equals("GET")) Http.method(exchange, "GET");
             switch (exchange.getRequestURI().getPath()) {
@@ -30,7 +31,8 @@ public class Server {
                             "SELECT color, contact, image, created_at, client_request_id, request_hash FROM found_items LIMIT 0",
                             "SELECT token_hash, user_id, expires_at FROM auth_sessions LIMIT 0",
                             "SELECT conversation_id, lost_item_id, found_item_id FROM conversations LIMIT 0",
-                            "SELECT message_id, conversation_id, sender_id, body, read_at FROM messages LIMIT 0"}) {
+                            "SELECT message_id, conversation_id, sender_id, body, read_at FROM messages LIMIT 0",
+                            "SELECT claim_id, lost_item_id, finder_id, found_location, message, status, created_at FROM found_claims LIMIT 0"}) {
                             try (var ignored = statement.executeQuery(sql)) { }
                         }
                         Http.json(exchange, 200, Map.of("status", "ok", "database", connection.getCatalog()));
@@ -40,7 +42,11 @@ public class Server {
             }
         }));
         server.createContext("/api/auth/", Http.safe(auth::handle));
-        server.createContext("/api/lost-items", Http.safe(lost::handle));
+        server.createContext("/api/lost-items", Http.safe(exchange -> {
+            if (exchange.getRequestURI().getPath().matches("/api/lost-items/[1-9][0-9]*/claims"))
+                claims.handle(exchange);
+            else lost.handle(exchange);
+        }));
         server.createContext("/api/found-items", Http.safe(found::handle));
         server.createContext("/api/conversations", Http.safe(conversations::handle));
         server.createContext("/api/me/reports", Http.safe(exchange -> {
@@ -49,7 +55,7 @@ public class Server {
             int owner = auth.requireUserId(exchange);
             Http.json(exchange, 200, Map.of("lost", lost.mine(owner), "found", found.mine(owner)));
         }));
-        // No claims or notifications routes existed in this checkout. Keep their namespace free.
+        // Notification and claim verification routes remain available for the team.
         server.createContext("/", Http.safe(exchange -> { throw new Http.Error(404, "Not found."); }));
         var executor = Executors.newFixedThreadPool(8);
         server.setExecutor(executor);

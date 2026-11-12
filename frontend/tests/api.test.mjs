@@ -106,3 +106,26 @@ test('report dates reject future or impossible calendar days and allow today or 
   const date = Object.fromEntries(parts.map(part => [part.type, part.value]));
   assert.equal(today(), `${date.year}-${date.month}-${date.day}`);
 });
+
+test('found claims use the real lost-item API and session, with no browser-supplied identity', async () => {
+  const api = await fresh();
+  const receipt = { claimId: 12, itemId: 7, finderId: 3, ownerId: 2, status: 'PENDING' };
+  globalThis.fetch = async (url, options) => {
+    assert.equal(url, '/api/lost-items/7/claims');
+    assert.equal(options.method, 'POST');
+    assert.equal(options.credentials, 'same-origin');
+    assert.equal(options.headers['X-DLF-Request'], '1');
+    assert.deepEqual(JSON.parse(options.body), { foundLocation: 'Library', message: 'Found on a desk.' });
+    return json(receipt, 201);
+  };
+  assert.deepEqual(await api.submitFoundClaim('lost-7', {
+    foundLocation: 'Library', message: 'Found on a desk.', finderId: 999, ownerId: 999, status: 'RETURNED',
+  }), receipt);
+  assert.throws(() => api.submitFoundClaim('found-7', {}), /only.*lost reports/);
+  for (const status of [400, 401, 403, 404, 409]) {
+    globalThis.fetch = async () => json({ error: `Claim error ${status}` }, status);
+    await assert.rejects(api.submitFoundClaim('lost-7', {}), error => error.status === status && error.message === `Claim error ${status}`);
+  }
+  globalThis.fetch = async () => { throw new TypeError('offline'); };
+  await assert.rejects(api.submitFoundClaim('lost-7', {}), /Cannot connect/);
+});
