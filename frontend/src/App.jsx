@@ -12,6 +12,7 @@ import ItemDetails from "./pages/ItemDetails.jsx";
 import ReportItem from "./pages/ReportItem.jsx";
 import Matches from "./pages/Matches.jsx";
 import MyReports from "./pages/MyReports.jsx";
+import MyClaims from "./pages/MyClaims.jsx";
 import Notifications from "./pages/Notifications.jsx";
 import Messages from "./pages/Messages.jsx";
 import Profile from "./pages/Profile.jsx";
@@ -27,6 +28,7 @@ const titles = {
   "item-details": "Item Details",
   "possible-matches": "Possible Matches",
   "my-reports": "My Reports",
+  "my-claims": "My Claims",
   notifications: "Notifications",
   messages: "Messages",
   profile: "Profile",
@@ -240,6 +242,14 @@ export default function App() {
             element={
               <Page name="my-reports">
                 <MyReports />
+              </Page>
+            }
+          />
+          <Route
+            path="/my-claims.html"
+            element={
+              <Page name="my-claims">
+                <MyClaims />
               </Page>
             }
           />

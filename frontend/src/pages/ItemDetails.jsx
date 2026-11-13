@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Badge, Button, EmptyState, Notice } from "../components/Common.jsx";
 import { Field } from "../components/Forms.jsx";
@@ -10,20 +10,50 @@ import { useApp } from "../context/AppContext.jsx";
 import { useLoad } from "../hooks.js";
 import { api } from "../services/api.js";
 import { date, safeImage } from "../utils.js";
+import "./claims.css";
 
 export default function ItemDetails() {
   const [params] = useSearchParams();
-  const [result] = useLoad(
+  const { session, toast } = useApp();
+  const [result, reloadItem] = useLoad(
     async () => ({ item: await api.getItem(params.get("id")) }),
     [params.get("id")],
   );
+  const item = result?.item;
+  const own = Boolean(session && item && item.ownerId === session.id);
+  const [claims, setClaims] = useState(null);
+  const [claimsError, setClaimsError] = useState("");
+  const [claimsRevision, setClaimsRevision] = useState(0);
+  useEffect(() => {
+    let active = true;
+    if (!own || item?.type !== "lost") {
+      setClaims([]);
+      setClaimsError("");
+      return () => { active = false; };
+    }
+    setClaims(null);
+    setClaimsError("");
+    api.getLostClaims(item.id).then(
+      (rows) => {
+        if (active) setClaims(rows);
+      },
+      (error) => {
+        if (active) {
+          setClaims(null);
+          setClaimsError(error.message);
+        }
+      },
+    );
+    return () => { active = false; };
+  }, [item?.id, own, claimsRevision]);
+  const reloadClaims = () => setClaimsRevision((revision) => revision + 1);
   const [modal, setModal] = useState(null);
   const [proof, setProof] = useState("");
   const [submittedClaim, setSubmittedClaim] = useState(null);
-  const { session, toast, refreshUnread } = useApp();
+  const [busyClaim, setBusyClaim] = useState(null);
+  const [returning, setReturning] = useState(false);
   const navigate = useNavigate();
   if (!result) return <p className="notice" role="status">Loading…</p>;
-  const { item } = result;
   if (!item)
     return (
       <EmptyState
@@ -33,12 +63,37 @@ export default function ItemDetails() {
         <Button to="/index.html#recent-items">Browse recent items</Button>
       </EmptyState>
     );
-  const own = session && item.ownerId === session.id;
   const open = (kind) => {
     if (!session) navigate("/login.html");
     else {
       setProof("");
       setModal(kind);
+    }
+  };
+  const decideClaim = async (claimId, status) => {
+    setBusyClaim(claimId);
+    try {
+      await api.decideClaim(claimId, status);
+      reloadClaims();
+      toast(status === "ACCEPTED" ? "Claim accepted." : "Claim rejected.");
+    } catch (error) {
+      toast(error.message, "error");
+    } finally {
+      setBusyClaim(null);
+    }
+  };
+  const confirmReturn = async () => {
+    setReturning(true);
+    try {
+      await api.markLostItemReturned(item.id);
+      reloadItem();
+      reloadClaims();
+      toast("Handover confirmed and report marked returned.");
+    } catch (error) {
+      toast(error.message, "error");
+      return false;
+    } finally {
+      setReturning(false);
     }
   };
   return (
@@ -161,8 +216,108 @@ export default function ItemDetails() {
           </Notice>
         </article>
       </div>
+      {own && item.type === "lost" && (
+        <section className="panel claim-review" aria-labelledby="claim-review-title">
+          <div className="panel-title claim-review-title">
+            <span className="claim-review-mark" aria-hidden="true">
+              <Icon name="found" />
+            </span>
+            <div className="claim-review-copy">
+              <h3 id="claim-review-title">Found-item claims</h3>
+              <p>Review the finder’s details and arrange a safe handover.</p>
+            </div>
+            {claims !== null && (
+              <span className="claim-review-count">
+                {claims.length} {claims.length === 1 ? "claim" : "claims"}
+              </span>
+            )}
+          </div>
+          {claimsError ? (
+            <p className="notice" role="alert">
+              Could not load claims: {claimsError}{" "}
+              <Button variant="outline" onClick={reloadClaims}>Retry</Button>
+            </p>
+          ) : claims === null ? (
+            <p className="muted" role="status">Loading claims…</p>
+          ) : claims.length ? (
+            <div className="claim-list">
+              {claims.map((claim) => (
+                <article className={`claim-entry claim-entry-${claim.status.toLowerCase()}`} key={claim.claimId}>
+                  <header className="claim-entry-header">
+                    <span className="claim-finder-avatar" aria-hidden="true">
+                      <Icon name="user" />
+                    </span>
+                    <div className="claim-finder-identity">
+                      <h4>{claim.finderName}</h4>
+                      <span>Student who found this item</span>
+                    </div>
+                    <span className={`claim-state claim-state-${claim.status.toLowerCase()}`}>
+                      {claim.status}
+                    </span>
+                  </header>
+                  {claim.finderRegistration && (
+                    <p className="claim-registration">
+                      Registration <strong>{claim.finderRegistration}</strong>
+                    </p>
+                  )}
+                  <dl className="claim-facts">
+                    <div><dt>Found at</dt><dd>{claim.foundLocation}</dd></div>
+                    <div><dt>Submitted</dt><dd>{date(claim.createdAt)}</dd></div>
+                  </dl>
+                  <div className="claim-message">
+                    <span>Finder’s note</span>
+                    <p>{claim.message}</p>
+                  </div>
+                  {claim.decidedAt && (
+                    <p className="claim-decision">
+                      <Icon name="calendar" />
+                      Decision recorded <time dateTime={claim.decidedAt}>{date(claim.decidedAt)}</time>
+                    </p>
+                  )}
+                  {claim.status === "PENDING" && (
+                    <div className="claim-entry-actions">
+                      <Button disabled={busyClaim !== null} onClick={() => decideClaim(claim.claimId, "ACCEPTED")}>
+                        <Icon name="check" />
+                        {busyClaim === claim.claimId ? "Saving…" : "Accept claim"}
+                      </Button>
+                      <Button variant="outline" disabled={busyClaim !== null} onClick={() => decideClaim(claim.claimId, "REJECTED")}>
+                        <Icon name="close" />
+                        Reject claim
+                      </Button>
+                    </div>
+                  )}
+                  {claim.status === "ACCEPTED" && ["Open", "Resolved"].includes(item.status) && (
+                    <div className="claim-entry-actions">
+                      <Button
+                        variant="outline"
+                        disabled={returning}
+                        onClick={() => setModal("confirm-return")}
+                      >
+                        <Icon name="check" />
+                        Confirm handover and mark returned
+                      </Button>
+                    </div>
+                  )}
+                </article>
+              ))}
+            </div>
+          ) : (
+            <p className="muted">No claims have been submitted for this report.</p>
+          )}
+        </section>
+      )}
       {modal === "contact" && (
         <ContactModal itemId={item.id} onClose={() => setModal(null)} />
+      )}
+      {modal === "confirm-return" && (
+        <Modal
+          title="Confirm the item was handed over?"
+          confirmText={returning ? "Saving…" : "Confirm handover"}
+          onClose={() => { if (!returning) setModal(null); }}
+          onConfirm={confirmReturn}
+        >
+          <p>Only continue after you have physically received the item. This marks the lost report as returned and notifies the finder.</p>
+        </Modal>
       )}
       {modal === "found-claim" && session && !own && item.type === "lost" && item.status === "Open" && (
         <FoundClaimModal key={item.id} item={item} onClose={() => setModal(null)} onSubmitted={setSubmittedClaim} />
@@ -175,7 +330,6 @@ export default function ItemDetails() {
           onConfirm={async () => {
             await api.claimItem(item.id, proof);
             toast("Demo claim submitted. Track its status in Notifications.");
-            await refreshUnread();
           }}
         >
           <p>

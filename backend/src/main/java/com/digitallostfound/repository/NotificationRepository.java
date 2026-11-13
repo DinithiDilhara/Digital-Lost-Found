@@ -83,6 +83,47 @@ public final class NotificationRepository {
         }
     }
 
+    public void createClaimStatusNotification(Connection connection, int finderId, long claimId,
+                                              int lostItemId, String status, String itemTitle) throws SQLException {
+        String type;
+        String title;
+        String message;
+        switch (status) {
+            case "ACCEPTED" -> {
+                type = "CLAIM_ACCEPTED";
+                title = "Claim accepted";
+                message = "The owner accepted your claim for " + itemTitle + ". Please arrange a handover.";
+            }
+            case "REJECTED" -> {
+                type = "CLAIM_REJECTED";
+                title = "Claim declined";
+                message = "The owner declined your claim for " + itemTitle + ".";
+            }
+            case "RETURNED" -> {
+                type = "CLAIM_RETURNED";
+                title = "Item return confirmed!";
+                message = "The owner has confirmed receiving the " + itemTitle
+                    + ". Your claim has been successfully completed.";
+            }
+            default -> throw new IllegalArgumentException("Unsupported claim notification status.");
+        }
+        String sql = """
+            INSERT INTO notifications
+                (recipient_id, claim_id, lost_item_id, type, title, message)
+            VALUES (?, ?, ?, ?, ?, ?)
+            ON DUPLICATE KEY UPDATE notification_id = notification_id
+            """;
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setInt(1, finderId);
+            statement.setLong(2, claimId);
+            statement.setInt(3, lostItemId);
+            statement.setString(4, type);
+            statement.setString(5, title);
+            statement.setString(6, message);
+            statement.executeUpdate();
+        }
+    }
+
     private int updateRead(String sql, long notificationId, int recipientId) {
         try (Connection connection = DatabaseConnection.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {

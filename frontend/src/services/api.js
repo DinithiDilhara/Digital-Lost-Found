@@ -138,6 +138,7 @@ export const api = {
     const result = await request('/me/reports');
     return combine(result.lost, result.found);
   },
+  getMyClaims: () => request('/me/claims'),
   reportLostItem: (values, key) => saveReport(values, 'lost', null, key),
   reportFoundItem: (values, key) => saveReport(values, 'found', null, key),
   updateReport: (id, values) => saveReport(values, reportPath(id).type, id),
@@ -164,6 +165,24 @@ export const api = {
     const { type, path } = reportPath(itemId);
     if (type !== 'lost') throw new Error('Found-item claims can only be submitted for lost reports.');
     return request(`${path}/claims`, { method: 'POST', body: { foundLocation, message } });
+  },
+  getLostClaims: itemId => {
+    const { type, path } = reportPath(itemId);
+    if (type !== 'lost') throw new Error('Claims are only available for lost reports.');
+    return request(`${path}/claims`);
+  },
+  decideClaim: (claimId, status) => {
+    const id = String(claimId);
+    if (!/^[1-9][0-9]*$/.test(id)) throw new Error('Invalid claim ID.');
+    const decision = String(status).toUpperCase();
+    if (!['ACCEPTED', 'REJECTED'].includes(decision))
+      throw new Error('Claim status must be ACCEPTED or REJECTED.');
+    return request(`/claims/${id}/status`, { method: 'PATCH', body: { status: decision } });
+  },
+  markLostItemReturned: itemId => {
+    const { type, path } = reportPath(itemId);
+    if (type !== 'lost') throw new Error('Only lost reports can be confirmed returned.');
+    return request(`${path}/return`, { method: 'PATCH' });
   },
   getConversationMessages: id => request(conversationPath(id, 'messages')),
   replyToConversation: (id, message, key = crypto.randomUUID()) =>

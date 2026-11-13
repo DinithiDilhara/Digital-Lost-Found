@@ -13,6 +13,7 @@ const nav = [
   ["report-item", "Report Item", "plus"],
   ["possible-matches", "Possible Matches", "match"],
   ["my-reports", "My Reports", "reports"],
+  ["my-claims", "My Claims", "check"],
   ["messages", "Messages", "mail"],
   ["notifications", "Notifications", "bell"],
   ["profile", "Profile", "user"],

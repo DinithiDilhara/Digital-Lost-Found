@@ -95,6 +95,47 @@ test('found claims use the lost-item claim endpoint and reject found reports', a
     message: 'Found beside the reference books.',
   }), /only be submitted for lost reports/);
 });
+test('claim review and return APIs use their owner-scoped routes and validate decisions', async () => {
+  const calls = [];
+  globalThis.fetch = async (url, options = {}) => {
+    calls.push({ url, options });
+    return url.endsWith('/claims')
+      ? json([{ claimId: 9, status: 'PENDING' }])
+      : json({ claimId: 9, itemId: 7, status: 'ACCEPTED' });
+  };
+  const api = await fresh();
+  assert.equal((await api.getLostClaims('lost-7'))[0].claimId, 9);
+  assert.throws(() => api.getLostClaims('found-7'), /only available for lost reports/);
+  await api.decideClaim(9, 'accepted');
+  await api.markLostItemReturned('lost-7');
+  assert.equal(calls[0].url, '/api/lost-items/7/claims');
+  assert.equal(calls[1].url, '/api/claims/9/status');
+  assert.equal(calls[1].options.method, 'PATCH');
+  assert.deepEqual(JSON.parse(calls[1].options.body), { status: 'ACCEPTED' });
+  assert.equal(calls[2].url, '/api/lost-items/7/return');
+  assert.equal(calls[2].options.method, 'PATCH');
+  assert.throws(() => api.decideClaim(9, 'PENDING'), /ACCEPTED or REJECTED/);
+  assert.throws(() => api.markLostItemReturned('found-7'), /Only lost reports/);
+});
+test('my claims use the authenticated finder endpoint', async () => {
+  const calls = [];
+  globalThis.fetch = async (url, options = {}) => {
+    calls.push({ url, options });
+    return json([{
+      claimId: 9,
+      status: 'ACCEPTED',
+      itemStatus: 'RETURNED',
+      returnedAt: '2026-11-12T10:00:00Z',
+    }]);
+  };
+  const api = await fresh();
+  const claims = await api.getMyClaims();
+  assert.equal(calls[0].url, '/api/me/claims');
+  assert.equal(calls[0].options.credentials, 'same-origin');
+  assert.equal(claims[0].status, 'ACCEPTED');
+  assert.equal(claims[0].itemStatus, 'RETURNED');
+  assert.equal(claims[0].returnedAt, '2026-11-12T10:00:00Z');
+});
 test('message API uses item type and server-side session without sender or recipient IDs', async () => {
   const calls = [];
   globalThis.fetch = async (url, options = {}) => {

@@ -44,7 +44,10 @@ final class ItemHandler {
             case "LOST" -> { if (!lost) throw new Http.Error(400, "Invalid found status."); yield "LOST"; }
             case "FOUND" -> "FOUND"; // Retains legacy lost-item FOUND (resolved) status.
             case "RESOLVED" -> { if (!lost) throw new Http.Error(400, "Use Returned for found items."); yield "RESOLVED"; }
-            case "RETURNED" -> "RETURNED";
+            case "RETURNED" -> {
+                if (lost) throw new Http.Error(400, "Use the owner-only return endpoint after the physical handover.");
+                yield "RETURNED";
+            }
             default -> throw new Http.Error(400, "Invalid report status.");
         };
     }

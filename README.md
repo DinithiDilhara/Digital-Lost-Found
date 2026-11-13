@@ -96,11 +96,11 @@ If the database does not exist yet, the next command creates it. Apply the base 
 .\scripts\Initialize-Database.ps1
 ```
 
-This script loads `.env`, connects to the host/port/database in `DB_URL`, creates missing base tables, applies the report/session and private-messaging migrations, and prints database/table/count checks. It stops on SQL errors. It does not drop tables, delete rows, reset passwords, or overwrite existing records. Rerunning it is supported. Your MySQL account needs CREATE/ALTER privileges for this setup step, in addition to runtime SELECT/INSERT/UPDATE/DELETE privileges.
+This script loads `.env`, connects to the host/port/database in `DB_URL`, creates missing base tables, applies the report/session, private-messaging, claim, notification and claim-verification migrations, and prints database/table/count checks. It stops on SQL errors. It does not drop tables, delete rows, reset passwords, or overwrite existing records. Rerunning it is supported. Your MySQL account needs CREATE/ALTER privileges for this setup step, in addition to runtime SELECT/INSERT/UPDATE/DELETE privileges.
 
 If the service is stopped, open an administrator PowerShell and run `Start-Service MySQL80`, then return to the normal terminal. It was already running on this laptop.
 
-Workbench alternative: connect with your normal MySQL account; run `database/schema.sql`, select `digital_lost_found` as the default schema, then run `database/migrations/001_shared_reports_and_sessions.sql` and `database/migrations/002_private_messaging.sql`. The migrations operate on `DATABASE()`; select the correct database first.
+Workbench alternative: connect with your normal MySQL account; run `database/schema.sql`, select `digital_lost_found` as the default schema, then run migrations `001_shared_reports_and_sessions.sql` through `005_claim_verification.sql` in numerical order. The migrations operate on `DATABASE()`; select the correct database first.
 
 If you do not know the password, use the credentials for your working Workbench connection or ask the person who configured MySQL to create a local application account and grant it access. Workbench being installed alone does not supply a password to Java. No password reset of the existing server has been attempted.
 
@@ -203,19 +203,28 @@ If port 5173 is already in use, reuse the existing project Vite server or stop i
 | GET / PUT / PATCH / DELETE | `/api/lost-items/{id}` | Details / owner edit / owner status / owner deletion |
 | GET / POST | `/api/found-items` | Public list / authenticated creation |
 | GET / PUT / PATCH / DELETE | `/api/found-items/{id}` | Details / owner edit / owner status / owner deletion |
+| POST | `/api/lost-items/{id}/claims` | Submit a pending found-item claim |
+| GET | `/api/lost-items/{id}/claims` | Item owner lists claims with finder and submission details |
+| PATCH | `/api/claims/{id}/status` | Item owner accepts or rejects a pending claim |
+| PATCH | `/api/lost-items/{id}/return` | Item owner confirms physical handover after an accepted claim |
 | GET | `/api/me/reports` | Authenticated user's `{lost: [], found: []}` |
+| GET | `/api/me/claims` | Authenticated finder's submitted claims, decision status and item return status |
+| GET | `/api/notifications` | List the authenticated user's notifications |
+| PATCH | `/api/notifications/{id}/read` | Mark one of the authenticated user's notifications read |
+| PATCH | `/api/notifications/read` | Mark all of the authenticated user's notifications read |
+| GET | `/api/notifications/unread-count` | Authenticated user's unread notification count |
 | GET / POST | `/api/conversations` | List conversations / start or reuse an item conversation and send its first message |
 | GET | `/api/conversations/unread-count` | Authenticated user's unread private-message count |
 | GET / POST | `/api/conversations/{id}/messages` | Read messages / send a private reply as a participant |
 | POST | `/api/conversations/{id}/read` | Mark received messages read |
 
-Report create/edit fields remain Java-style: `title`, `description`, `category`, `location`, `dateLost` or `dateFound`, with optional `color`, `contact`, `image`. `PATCH` accepts `status`. PUT edits preserve status; creation always starts open. POST returns 201 and the generated ID; a replay returns 200. DELETE returns 204. Errors are JSON `{error: "..."}`.
+Report create/edit fields remain Java-style: `title`, `description`, `category`, `location`, `dateLost` or `dateFound`, with optional `color`, `contact`, `image`. Lost-item return status can only be set by the dedicated handover endpoint; found reports retain their existing owner status workflow. PUT edits preserve status; creation always starts open. POST returns 201 and the generated ID; a replay returns 200. DELETE returns 204. Errors are JSON `{error: "..."}`.
 
-Private messages are stored in MySQL tables `conversations` and `messages`; all conversation reads and writes require the authenticated session cookie. The reporter is resolved by the backend from the selected lost/found report. The Messages page refreshes conversations every 15 seconds and the open chat every 5 seconds; unread message counts are separate from the teammate-owned notifications feature.
+Claim review is owner-only. A decision is allowed only while a claim is `PENDING`; accepting a claim does not mark the item returned. The finder can follow their own claims at `/my-claims.html`; the claim's `ACCEPTED` decision remains separate from the item's `RETURNED` status. The owner confirms physical handover separately, and claim decisions and completed handovers notify the finder. `decided_at` and `returned_at` preserve the decision and handover timestamps.
 
-**Shared-file coordination:** `Server.java` still uses JDK HttpServer, the same existing report URLs, and the repository/model layer. Its duplicated route bodies were moved into `ItemHandler`; auth routes were added through `AuthHandler`. Teammates adding claim or notification routes should keep their `createContext` registrations alongside these existing contexts. No claim-verification or notification HTTP route/table existed in this checkout, so no such API was replaced.
+Private messages are stored in MySQL tables `conversations` and `messages`; all conversation reads and writes require the authenticated session cookie. The reporter is resolved by the backend from the selected lost/found report. The Messages page refreshes conversations every 15 seconds and the open chat every 5 seconds; unread message counts remain separate from notifications.
 
-The existing frontend notification and claim preview behavior remains in `services/preview.js`; Contact Reporter now stores messages through the authenticated Java API and MySQL. Matching returns no fabricated matches. Password-reset email is still an explicit preview with no email sent. Live notification/claim verification work remains for the teammates developing it.
+The existing demo claim preview behavior remains in `services/preview.js`; found-item claims for lost reports use the authenticated Java API and MySQL. Contact Reporter also stores messages through the authenticated Java API and MySQL. Matching returns no fabricated matches. Password-reset email is still an explicit preview with no email sent.
 
 ## Tests and evidence
 
