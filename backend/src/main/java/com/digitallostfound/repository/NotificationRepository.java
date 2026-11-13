@@ -64,6 +64,26 @@ public final class NotificationRepository {
     /**
      * Call this with the claim submission connection before its commit.
      */
+    public Map<String, Object> latestForClaim(int recipientId, long claimId) {
+        String sql = """
+            SELECT notification_id, claim_id, lost_item_id, type, title, message, is_read, created_at
+            FROM notifications
+            WHERE recipient_id = ? AND claim_id = ?
+            ORDER BY notification_id DESC
+            LIMIT 1
+            """;
+        try (Connection connection = DatabaseConnection.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setInt(1, recipientId);
+            statement.setLong(2, claimId);
+            try (ResultSet result = statement.executeQuery()) {
+                return result.next() ? map(result) : Map.of();
+            }
+        } catch (SQLException error) {
+            throw new IllegalStateException("Failed to load the most recent claim notification", error);
+        }
+    }
+
     public void createClaimNotification(Connection connection, int ownerId, long claimId,
                                         int lostItemId, String title, String message)
             throws SQLException {

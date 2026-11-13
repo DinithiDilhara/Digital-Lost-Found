@@ -1,7 +1,9 @@
 package com.digitallostfound.repository;
 
 import com.digitallostfound.config.DatabaseConnection;
+import com.digitallostfound.server.WebSocketServer;
 import java.sql.*;
+import java.util.Map;
 
 public final class ClaimRepository {
     public record Claim(long claimId, int itemId, int finderId, int ownerId, String status) { }
@@ -47,6 +49,10 @@ public final class ClaimRepository {
                     "New found-item claim",
                     "Someone submitted a claim for your lost-item report.");
                 connection.commit();
+                Map<String, Object> notification = new NotificationRepository().latestForClaim(ownerId, claimId);
+                if (!notification.isEmpty()) {
+                    WebSocketServer.notifyUser(ownerId, Map.of("type", "NEW_NOTIFICATION", "notification", notification));
+                }
                 return new Claim(claimId, itemId, finderId, ownerId, "PENDING");
             } catch (SQLException | RuntimeException error) {
                 connection.rollback();

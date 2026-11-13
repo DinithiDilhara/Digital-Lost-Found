@@ -8,6 +8,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { api } from "../services/api.js";
+import { socket } from "../services/socket.js";
 import Icon from "../components/Icon.jsx";
 
 const AppContext = createContext(null);
@@ -78,26 +79,6 @@ export function AppProvider({ children }) {
     if (api.getSession())
       setUnread(await api.getUnreadNotificationCount());
   }, []);
-  useEffect(() => {
-    if (!session) {
-      setUnread(0);
-      return undefined;
-    }
-    let active = true;
-    const refresh = async () => {
-      try {
-        const count = await api.getUnreadNotificationCount();
-        if (active) setUnread(count);
-      } catch (error) {
-        if (active) console.error("Could not refresh notifications:", error);
-      }
-    };
-    const interval = setInterval(refresh, 30000);
-    return () => {
-      active = false;
-      clearInterval(interval);
-    };
-  }, [session]);
   const refreshMessagesUnread = useCallback(async () => {
     if (!api.getSession()) {
       setMessagesUnread(0);
@@ -109,25 +90,47 @@ export function AppProvider({ children }) {
   }, []);
   useEffect(() => {
     if (!session) {
+      socket.disconnectWebSocket();
+      return undefined;
+    }
+    socket.connectWebSocket();
+    return () => socket.disconnectWebSocket();
+  }, [session]);
+  useEffect(() => {
+    const onNotification = (event) => {
+      const notification = event.detail;
+      if (notification?.title) toast(notification.title, "info");
+      refreshUnread();
+    };
+    const onMessage = () => {
+      refreshMessagesUnread().catch((error) =>
+        console.error("Could not refresh unread messages:", error));
+    };
+    const onSocketStatus = (event) => {
+      if (event.detail?.connected && api.getSession()) {
+        refreshUnread().catch((error) =>
+          console.error("Could not refresh notifications:", error));
+        refreshMessagesUnread().catch((error) =>
+          console.error("Could not refresh unread messages:", error));
+      }
+    };
+    window.addEventListener("dlf:notification", onNotification);
+    window.addEventListener("dlf:message", onMessage);
+    window.addEventListener("dlf:ws-status", onSocketStatus);
+    return () => {
+      window.removeEventListener("dlf:notification", onNotification);
+      window.removeEventListener("dlf:message", onMessage);
+      window.removeEventListener("dlf:ws-status", onSocketStatus);
+    };
+  }, [refreshMessagesUnread, refreshUnread, toast]);
+  useEffect(() => {
+    if (!session) {
       setMessagesUnread(0);
       return undefined;
     }
-    let active = true;
-    const refresh = async () => {
-      try {
-        const count = await api.getUnreadMessageCount();
-        if (active) setMessagesUnread(count);
-      } catch (error) {
-        if (active) console.error("Could not refresh unread messages:", error);
-      }
-    };
-    refresh();
-    const interval = setInterval(refresh, 30000);
-    return () => {
-      active = false;
-      clearInterval(interval);
-    };
-  }, [session]);
+    refreshMessagesUnread().catch((error) =>
+      console.error("Could not refresh unread messages:", error));
+  }, [session, refreshMessagesUnread]);
   const login = async (values) => {
     const profile = await api.loginUser(values);
     setUser(profile);

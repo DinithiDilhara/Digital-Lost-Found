@@ -1,6 +1,6 @@
 # Digital Lost & Found
 Real-time campus Lost & Found system for EC5205 Operating Systems & Network Programming.
-The project uses React + Vite, a Java 17 HttpServer/JDBC backend, and MySQL.
+The project uses React + Vite, a Java 17 HttpServer/JDBC backend, a dedicated Java WebSocket listener, and MySQL.
 
 ## Local database configuration
 
@@ -17,16 +17,17 @@ Run `npm run dev` from the repository root after MySQL is running and the schema
 migrations are applied. This starts the Java backend and Vite frontend together;
 the frontend waits for the backend health endpoint before starting.
 
-By default, the frontend listens only on this computer. To let other devices on
-the same trusted network use the app, set `VITE_HOST=0.0.0.0` in the ignored
-root `.env` file and dot-source `scripts/Use-DevTools.ps1` before running
-`npm run dev`. Open `http://<server-computer-LAN-IP>:5173` on the other devices
-and allow inbound TCP port 5173 through the server computer's firewall only on
-the trusted network. The Vite proxy forwards API calls to Java on that host;
-Java then connects to its configured MySQL database. Keep MySQL and Java
-credentials on the server computer; do not expose MySQL port 3306 to student
-devices. Vite's development server is intended for trusted-network testing,
-not public production hosting.
+By default, the frontend and backend listeners are limited to this computer.
+To let other devices on the same trusted network use the app, set `HOST=0.0.0.0`
+and `VITE_HOST=0.0.0.0` in the ignored root `.env` file, then dot-source
+`scripts/Use-DevTools.ps1` before running `npm run dev`. Open
+`http://<server-computer-LAN-IP>:5173` on the other devices and allow inbound
+TCP ports 5173 and 5001 through the server computer's firewall only on the
+trusted network. Port 5001 carries the WebSocket connection; port 5000 remains
+the Java HTTP API used by Vite's proxy. Java connects to its configured MySQL
+database. Keep MySQL and Java credentials on the server computer; do not expose
+MySQL port 3306 to student devices. Vite's development server is intended for
+trusted-network testing, not public production hosting.
 
 ## Current status and one remaining local setup step
 
@@ -222,7 +223,7 @@ Report create/edit fields remain Java-style: `title`, `description`, `category`,
 
 Claim review is owner-only. A decision is allowed only while a claim is `PENDING`; accepting a claim does not mark the item returned. The finder can follow their own claims at `/my-claims.html`; the claim's `ACCEPTED` decision remains separate from the item's `RETURNED` status. The owner confirms physical handover separately, and claim decisions and completed handovers notify the finder. `decided_at` and `returned_at` preserve the decision and handover timestamps.
 
-Private messages are stored in MySQL tables `conversations` and `messages`; all conversation reads and writes require the authenticated session cookie. The reporter is resolved by the backend from the selected lost/found report. The Messages page refreshes conversations every 15 seconds and the open chat every 5 seconds; unread message counts remain separate from notifications.
+Private messages are stored in MySQL tables `conversations` and `messages`; all conversation reads and writes require the authenticated session cookie. The reporter is resolved by the backend from the selected lost/found report. The Java `HttpServer` does not expose upgraded socket frames, so WebSockets run on a dedicated listener at port 5001 by default (`WS_PORT` / `VITE_WS_PORT` can change it). Logged-in browsers connect to `ws://<host>:5001/api/ws` and send replies as `CHAT_MESSAGE` frames with `conversationId`, `content`, and a UUID `clientMessageId`. After persistence, the sender receives `MESSAGE_SENT` and the other participant receives `NEW_MESSAGE`. If the socket is unavailable before sending, the Messages page falls back to the authenticated REST endpoint. Conversation lists, open chats, and unread counts refresh on socket events and after reconnect instead of polling; ordinary item listings continue to use the HTTP API.
 
 The existing demo claim preview behavior remains in `services/preview.js`; found-item claims for lost reports use the authenticated Java API and MySQL. Contact Reporter also stores messages through the authenticated Java API and MySQL. Matching returns no fabricated matches. Password-reset email is still an explicit preview with no email sent.
 

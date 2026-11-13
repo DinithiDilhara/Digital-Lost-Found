@@ -4,6 +4,7 @@ import { Button, EmptyState } from "../components/Common.jsx";
 import Icon from "../components/Icon.jsx";
 import { useApp } from "../context/AppContext.jsx";
 import { api } from "../services/api.js";
+import { socket } from "../services/socket.js";
 import "./messages.css";
 
 const time = (value) => value
@@ -50,8 +51,16 @@ export default function Messages() {
 
   useEffect(() => {
     loadConversations();
-    const interval = setInterval(loadConversations, 15000);
-    return () => clearInterval(interval);
+    const onMessage = () => loadConversations();
+    const onSocketStatus = (event) => {
+      if (event.detail?.connected) loadConversations();
+    };
+    window.addEventListener("dlf:message", onMessage);
+    window.addEventListener("dlf:ws-status", onSocketStatus);
+    return () => {
+      window.removeEventListener("dlf:message", onMessage);
+      window.removeEventListener("dlf:ws-status", onSocketStatus);
+    };
   }, [loadConversations]);
 
   useEffect(() => {
@@ -63,37 +72,53 @@ export default function Messages() {
     }
     let active = true;
     let busy = false;
+    let refreshAgain = false;
     const refresh = async () => {
-      if (busy) return;
+      if (busy) {
+        refreshAgain = true;
+        return;
+      }
       busy = true;
       try {
-        const rows = await api.getConversationMessages(selectedId);
-        if (!active) return;
-        setMessages(rows);
-        setMessagesError("");
-        await api.markConversationRead(selectedId);
-        if (!active) return;
-        setConversations((current) => current.map((conversation) =>
-          String(conversation.id) === selectedId
-            ? { ...conversation, unreadCount: 0 }
-            : conversation));
-        refreshMessagesUnread().catch((error) =>
-          console.error("Could not refresh unread messages:", error));
+        do {
+          refreshAgain = false;
+          const rows = await api.getConversationMessages(selectedId);
+          if (!active) return;
+          setMessages(rows);
+          setMessagesError("");
+          await api.markConversationRead(selectedId);
+          if (!active) return;
+          setConversations((current) => current.map((conversation) =>
+            String(conversation.id) === selectedId
+              ? { ...conversation, unreadCount: 0 }
+              : conversation));
+          refreshMessagesUnread().catch((error) =>
+            console.error("Could not refresh unread messages:", error));
+        } while (active && refreshAgain);
       } catch (error) {
         if (active) setMessagesError(error.message);
       } finally {
         busy = false;
         if (active) setMessagesLoading(false);
+        if (active && refreshAgain) refresh();
       }
+    };
+    const onMessage = (event) => {
+      if (String(event.detail?.conversationId) === selectedId) refresh();
+    };
+    const onSocketStatus = (event) => {
+      if (event.detail?.connected) refresh();
     };
     setMessages([]);
     setMessagesError("");
     setMessagesLoading(true);
     refresh();
-    const interval = setInterval(refresh, 5000);
+    window.addEventListener("dlf:message", onMessage);
+    window.addEventListener("dlf:ws-status", onSocketStatus);
     return () => {
       active = false;
-      clearInterval(interval);
+      window.removeEventListener("dlf:message", onMessage);
+      window.removeEventListener("dlf:ws-status", onSocketStatus);
     };
   }, [selectedId, refreshMessagesUnread]);
 
@@ -116,10 +141,16 @@ export default function Messages() {
     setSending(true);
     setSendError("");
     try {
-      await api.replyToConversation(selected.id, content, submission.current.key);
+      const message = await socket.sendChatMessage({
+        conversationId: selected.id,
+        content,
+        clientMessageId: submission.current.key,
+      }) || await api.replyToConversation(selected.id, content, submission.current.key);
       submission.current = null;
       setDraft("");
-      setMessages(await api.getConversationMessages(selected.id));
+      setMessages((current) => current.some((row) => String(row.id) === String(message.id))
+        ? current
+        : [...current, message]);
       await loadConversations();
     } catch (error) {
       setSendError(error.message);

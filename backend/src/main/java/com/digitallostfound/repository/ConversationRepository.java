@@ -1,6 +1,7 @@
 package com.digitallostfound.repository;
 
 import com.digitallostfound.config.DatabaseConnection;
+import com.digitallostfound.server.WebSocketServer;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -81,6 +82,7 @@ public final class ConversationRepository {
                         || !body.equals(existing.get("body"))) {
                     throw new Failure(409, "This message retry key was already used for different content.");
                 }
+                notifyOtherParticipant(connection, conversationId, senderId, existing);
                 return existing;
             }
             long messageId;
@@ -102,6 +104,7 @@ public final class ConversationRepository {
                     if (existing != null
                             && ((Number) existing.get("conversationId")).longValue() == conversationId
                             && body.equals(existing.get("body"))) {
+                        notifyOtherParticipant(connection, conversationId, senderId, existing);
                         return existing;
                     }
                     throw new Failure(409, "This message retry key was already used.");
@@ -113,9 +116,32 @@ public final class ConversationRepository {
                 statement.setLong(1, conversationId);
                 statement.executeUpdate();
             }
-            return message(connection, messageId);
+            Map<String, Object> stored = message(connection, messageId);
+            notifyOtherParticipant(connection, conversationId, senderId, stored);
+            return stored;
         } catch (SQLException error) {
             throw new IllegalStateException("Failed to send message", error);
+        }
+    }
+
+    private void notifyOtherParticipant(Connection connection, long conversationId, int senderId,
+                                        Map<String, Object> message) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(
+                "SELECT CASE WHEN reporter_id = ? THEN requester_id ELSE reporter_id END AS other_user_id " +
+                "FROM conversations WHERE conversation_id = ?")) {
+            statement.setInt(1, senderId);
+            statement.setLong(2, conversationId);
+            try (ResultSet result = statement.executeQuery()) {
+                if (result.next()) {
+                    int otherUserId = result.getInt("other_user_id");
+                    if (otherUserId != senderId) {
+                        WebSocketServer.notifyUser(otherUserId, Map.of(
+                            "type", "NEW_MESSAGE",
+                            "message", message
+                        ));
+                    }
+                }
+            }
         }
     }
 

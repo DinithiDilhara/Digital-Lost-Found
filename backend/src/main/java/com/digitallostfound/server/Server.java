@@ -11,8 +11,11 @@ import java.util.concurrent.Executors;
 public class Server {
     public static void main(String[] args) throws IOException {
         int port = Integer.parseInt(System.getenv().getOrDefault("PORT", "5000"));
-        HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", port), 0);
+        int websocketPort = Integer.parseInt(System.getenv().getOrDefault("WS_PORT", "5001"));
+        String host = System.getenv().getOrDefault("HOST", "0.0.0.0");
+        HttpServer server = HttpServer.create(new InetSocketAddress(host, port), 0);
         AuthHandler auth = new AuthHandler();
+        WebSocketServer websocket = new WebSocketServer(new InetSocketAddress(host, websocketPort), auth);
         ItemHandler lost = new ItemHandler(true, auth);
         ItemHandler found = new ItemHandler(false, auth);
         ConversationHandler conversations = new ConversationHandler(auth);
@@ -70,9 +73,19 @@ public class Server {
         server.createContext("/", Http.safe(exchange -> { throw new Http.Error(404, "Not found."); }));
         var executor = Executors.newFixedThreadPool(8);
         server.setExecutor(executor);
-        Runtime.getRuntime().addShutdownHook(new Thread(() -> { server.stop(1); executor.shutdown(); }));
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            server.stop(1);
+            executor.shutdown();
+            try {
+                websocket.stop(1000);
+            } catch (InterruptedException error) {
+                Thread.currentThread().interrupt();
+            }
+        }));
         server.start();
-        System.out.println("Digital Lost & Found: http://127.0.0.1:" + port + "/api/health");
-        System.out.println("Database readiness: http://127.0.0.1:" + port + "/api/health/db");
+        websocket.start();
+        System.out.println("Digital Lost & Found: http://" + host + ":" + port + "/api/health");
+        System.out.println("WebSocket: ws://" + host + ":" + websocketPort + "/api/ws");
+        System.out.println("Database readiness: http://" + host + ":" + port + "/api/health/db");
     }
 }

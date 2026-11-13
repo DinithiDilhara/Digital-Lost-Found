@@ -5,6 +5,7 @@ import com.digitallostfound.repository.*;
 import com.digitallostfound.service.Passwords;
 import com.google.gson.JsonObject;
 import com.sun.net.httpserver.HttpExchange;
+import java.sql.SQLException;
 import java.util.*;
 
 final class AuthHandler {
@@ -14,14 +15,17 @@ final class AuthHandler {
     private static final String DUMMY_HASH = Passwords.hash("unused-login-timing-padding");
 
     static String token(HttpExchange exchange) {
-        String cookies = exchange.getRequestHeaders().getFirst("Cookie");
+        return token(exchange.getRequestHeaders().getFirst("Cookie"));
+    }
+    static String token(String cookies) {
         if (cookies != null) for (String pair : cookies.split(";")) {
             String[] parts = pair.trim().split("=", 2);
             if (parts.length == 2 && parts[0].equals(COOKIE) && parts[1].matches("[A-Za-z0-9_-]{43}")) return parts[1];
         }
         return null;
     }
-    Integer optionalUserId(HttpExchange exchange) throws Exception { return sessions.find(token(exchange)); }
+    Integer optionalUserId(HttpExchange exchange) throws SQLException { return sessions.find(token(exchange)); }
+    Integer optionalUserId(String token) throws SQLException { return sessions.find(token); }
     int requireUserId(HttpExchange exchange) throws Exception {
         Integer id = optionalUserId(exchange);
         if (id == null) throw new Http.Error(401, "Please log in to continue.");
