@@ -5,8 +5,8 @@
   "scripts": {
     "predev": "node frontend/scripts/sync-assets.mjs",
     "dev": "concurrently --kill-others-on-fail --names backend,frontend --prefix-colors blue,green \"npm run dev:backend\" \"npm run dev:frontend\"",
-    "dev:backend": "cd backend && mvn -q compile dependency:build-classpath \"-Dmdep.outputFile=target\\runtime-classpath.txt\" && powershell -NoProfile -ExecutionPolicy Bypass -Command \"$deps = Get-Content 'target\\runtime-classpath.txt'; java -cp ('target\\classes;' + $deps) com.digitallostfound.server.Server\"",
-    "dev:frontend": "node frontend/scripts/wait-for-backend.mjs && vite --config frontend/vite.config.mjs",
+    "dev:backend": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts\\Start-Dev-Backend.ps1",
+    "dev:frontend": "node frontend/scripts/wait-for-backend.mjs && vite --config frontend/vite.config.mjs --host 0.0.0.0",
     "prebuild": "node frontend/scripts/sync-assets.mjs",
     "build": "vite build --config frontend/vite.config.mjs",
     "preview": "vite preview --config frontend/vite.config.mjs",
