@@ -22,3 +22,24 @@
 # virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
 hs_err_pid*
 replay_pid*
+
+# Maven generated files
+backend/target/
+
+# Node.js dependencies
+node_modules/
+frontend/node_modules/
+.env
+.env.*
+!.env.example
+
+# Vite generated files
+frontend/dist/
+frontend/public/
+dist/
+
+# Local development tools and secrets
+.local/
+.env
+.env.local
+backend/.env
